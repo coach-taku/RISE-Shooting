@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* =====================================================
+   RISE Shooting - グローバルスタイル
+   カラーテーマ:
+     背景: #c0c0bf
+     メイン: #e1c614 (イエロー/ゴールド)
+     アクセント: #ffffff
+   ===================================================== */
+
+:root {
+  --bg: #c0c0bf;
+  --main: #e1c614;
+  --accent: #ffffff;
+}
+
+body {
+  background-color: var(--bg);
+  color: #1a1a1a;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+/* カスタムスクロールバー */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #a8a8a7;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--main);
+  border-radius: 3px;
+}
+
+/* フォーカスリング */
+*:focus-visible {
+  outline: 2px solid var(--main);
+  outline-offset: 2px;
+}
