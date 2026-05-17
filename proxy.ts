@@ -1,9 +1,11 @@
-// 認証・ルーティングミドルウェア
+// 認証・ルーティング Proxy（Next.js 16 以降の仕様）
+// middleware.ts から proxy.ts へリネーム済み（関数名も proxy に変更）
 // 未ログインのユーザーはログインページへ、ロールに応じて適切な画面へリダイレクト
+
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -38,10 +40,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // ログインページは未ログインでもアクセス可能
-  if (pathname === '/login') {
-    if (user) {
-      // ログイン済みならホームへリダイレクト
+  // ログインページ・セットアップページは未ログインでもアクセス可能
+  if (pathname === '/login' || pathname === '/setup') {
+    if (user && pathname === '/login') {
+      // ログイン済みでログインページにアクセスした場合はホームへリダイレクト
       return NextResponse.redirect(new URL('/', request.url))
     }
     return supabaseResponse
