@@ -1,15 +1,24 @@
 'use client'
 
-// P-01: ログイン画面
-// 選手・コーチが「名前（メールアドレス）」と「合言葉（パスワード）」でログインする画面
+// P-01: ログイン画面（デモ版）
+// 名前をプルダウンで選択し、合言葉（パスワード）を入力してログインする
+// 内部では選択した名前を仮想メールアドレスに変換して Supabase Auth を利用する
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+// デモユーザー一覧
+// 名前と内部で使用する仮想メールアドレスを対応付ける
+const DEMO_USERS = [
+  { name: 'コーチ山田', email: 'yamada@demo.risenote.com' },
+  { name: '選手佐藤', email: 'sato@demo.risenote.com' },
+  { name: '選手鈴木', email: 'suzuki@demo.risenote.com' },
+]
+
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [selectedName, setSelectedName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,10 +28,19 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
+    // 選択された名前から仮想メールアドレスを取得
+    const selectedUser = DEMO_USERS.find((u) => u.name === selectedName)
+    if (!selectedUser) {
+      setError('名前を選択してください。')
+      setLoading(false)
+      return
+    }
+
     const supabase = createClient()
 
+    // 仮想メールアドレスとパスワードで Supabase Auth にログイン
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
+      email: selectedUser.email,
       password,
     })
 
@@ -71,19 +89,24 @@ export default function LoginPage() {
         <h2 className="text-lg font-bold text-white mb-6 text-center">ログイン</h2>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          {/* メールアドレス（名前代わりに使用） */}
+          {/* 名前（プルダウン選択） */}
           <div>
             <label className="block text-sm font-medium text-white mb-1">
-              メールアドレス（名前）
+              名前
             </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+            <select
+              value={selectedName}
+              onChange={(e) => setSelectedName(e.target.value)}
               required
-              placeholder="例: yamada@team.com"
-              className="w-full rounded-lg px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 text-sm"
-            />
+              className="w-full rounded-lg px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 text-sm appearance-none"
+            >
+              <option value="">-- 名前を選んでください --</option>
+              {DEMO_USERS.map((user) => (
+                <option key={user.email} value={user.name}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* パスワード（合言葉） */}
