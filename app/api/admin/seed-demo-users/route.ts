@@ -28,16 +28,38 @@ const DEMO_USERS = [
 ]
 
 export async function POST() {
+  // 環境変数チェック（Vercelに設定されているか確認）
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return NextResponse.json(
+      { error: '環境変数 NEXT_PUBLIC_SUPABASE_URL が設定されていません。Vercelの環境変数設定を確認してください。' },
+      { status: 500 }
+    )
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      { error: '環境変数 SUPABASE_SERVICE_ROLE_KEY が設定されていません。Vercelの環境変数設定を確認してください。' },
+      { status: 500 }
+    )
+  }
+
   try {
     const adminClient = createAdminClient()
     const results: { email: string; status: string; detail?: string }[] = []
 
+    // 既存ユーザー一覧を1回だけ取得（ループ内で毎回呼ばないよう最適化）
+    const { data: existingUsersData, error: listError } = await adminClient.auth.admin.listUsers()
+    if (listError) {
+      return NextResponse.json(
+        { error: `ユーザー一覧の取得に失敗しました: ${listError.message}` },
+        { status: 500 }
+      )
+    }
+
+    const existingEmails = new Set(existingUsersData?.users?.map((u) => u.email) ?? [])
+
     for (const user of DEMO_USERS) {
       // 既存ユーザーの確認
-      const { data: existingUsers } = await adminClient.auth.admin.listUsers()
-      const alreadyExists = existingUsers?.users?.some((u) => u.email === user.email)
-
-      if (alreadyExists) {
+      if (existingEmails.has(user.email)) {
         results.push({ email: user.email, status: 'already_exists' })
         continue
       }
@@ -62,7 +84,11 @@ export async function POST() {
 
     return NextResponse.json({ success: true, results })
   } catch (err) {
-    console.error('seed-demo-users error:', err)
-    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('seed-demo-users error:', message)
+    return NextResponse.json(
+      { error: `サーバーエラー: ${message}` },
+      { status: 500 }
+    )
   }
 }

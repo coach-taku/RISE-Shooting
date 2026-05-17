@@ -26,16 +26,28 @@ export default function SetupPage() {
 
     try {
       const res = await fetch('/api/admin/seed-demo-users', { method: 'POST' })
-      const data = await res.json()
 
-      if (data.success) {
+      // レスポンスが JSON でない場合に備えてテキストで受け取る
+      const text = await res.text()
+      let data: { success?: boolean; results?: typeof results; error?: string }
+      try {
+        data = JSON.parse(text)
+      } catch {
+        // JSON パース失敗 = サーバーが HTML などを返した場合（500エラーなど）
+        setError(`サーバーエラー (${res.status}): レスポンスが不正です。Vercelのログを確認してください。`)
+        return
+      }
+
+      if (data.success && data.results) {
         setResults(data.results)
         setDone(true)
       } else {
-        setError(data.error ?? 'エラーが発生しました')
+        // サーバーから返ってきた具体的なエラーメッセージをそのまま表示
+        setError(data.error ?? `エラーが発生しました (status: ${res.status})`)
       }
-    } catch {
-      setError('通信エラーが発生しました。もう一度お試しください。')
+    } catch (e) {
+      // fetch 自体が失敗した場合（ネットワークエラーなど）
+      setError(`通信エラー: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setLoading(false)
     }
@@ -100,10 +112,10 @@ export default function SetupPage() {
           <div className="mb-5 space-y-2">
             {results.map((r) => (
               <div key={r.email} className="flex items-center justify-between text-sm">
-                <span className="text-white/70">{r.email}</span>
-                <span className="font-medium" style={{ color: r.status === 'error' ? '#fca5a5' : r.status === 'created' ? '#86efac' : '#fde68a' }}>
+                <span className="text-white/70 text-xs">{r.email}</span>
+                <span className="font-medium text-xs" style={{ color: r.status === 'error' ? '#fca5a5' : r.status === 'created' ? '#86efac' : '#fde68a' }}>
                   {statusLabel(r.status)}
-                  {r.detail && <span className="text-xs ml-1">({r.detail})</span>}
+                  {r.detail && <span className="ml-1">({r.detail})</span>}
                 </span>
               </div>
             ))}
@@ -117,9 +129,11 @@ export default function SetupPage() {
           </div>
         )}
 
-        {/* エラー */}
+        {/* エラー（サーバーから返ってきたメッセージをそのまま表示） */}
         {error && (
-          <p className="text-red-300 text-sm mb-4 text-center">{error}</p>
+          <div className="mb-4 p-3 rounded-xl text-xs break-all" style={{ backgroundColor: 'rgba(252,165,165,0.15)', color: '#fca5a5' }}>
+            {error}
+          </div>
         )}
 
         {/* ボタン */}
