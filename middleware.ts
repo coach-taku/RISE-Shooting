@@ -38,10 +38,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // ログインページは未ログインでもアクセス可能
-  if (pathname === '/login') {
-    if (user) {
-      // ログイン済みならホームへリダイレクト
+  // ログインページ・セットアップページは未ログインでもアクセス可能
+  if (pathname === '/login' || pathname === '/setup') {
+    if (user && pathname === '/login') {
+      // ログイン済みでログインページにアクセスした場合はホームへリダイレクト
       return NextResponse.redirect(new URL('/', request.url))
     }
     return supabaseResponse
