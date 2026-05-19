@@ -8,9 +8,9 @@
 --
 -- 【デモアカウント一覧】
 --   ログイン画面での表示名  |  内部メールアドレス（直接入力不要）  |  合言葉
---   コーチ山田（コーチ）    |  yamada@demo.risenote.com           |  rise2024
---   選手佐藤（選手）        |  sato@demo.risenote.com             |  rise2024
---   選手鈴木（選手）        |  suzuki@demo.risenote.com           |  rise2024
+--   コーチ山田（コーチ）    |  yamada@rise-shooting.example.com           |  rise2024
+--   選手佐藤（選手）        |  sato@rise-shooting.example.com             |  rise2024
+--   選手鈴木（選手）        |  suzuki@rise-shooting.example.com           |  rise2024
 --
 -- 【ログイン方法】
 --   ユーザーはアプリのログイン画面で「名前プルダウン」から選択し、
@@ -25,13 +25,13 @@
 -- 2. Authentication > Users > "Add user" をクリック
 -- 3. 以下の3名を順番に登録する：
 --
---    Email: yamada@demo.risenote.com
+--    Email: yamada@rise-shooting.example.com
 --    Password: rise2024
 --
---    Email: sato@demo.risenote.com
+--    Email: sato@rise-shooting.example.com
 --    Password: rise2024
 --
---    Email: suzuki@demo.risenote.com
+--    Email: suzuki@rise-shooting.example.com
 --    Password: rise2024
 --
 -- 4. ユーザー作成後、profiles テーブルのロールと表示名を
@@ -45,17 +45,17 @@
 -- コーチ山田の profiles を設定（auth.users から uuid を取得して更新）
 update public.profiles
 set username = 'コーチ山田', role = 'coach'
-where id = (select id from auth.users where email = 'yamada@demo.risenote.com');
+where id = (select id from auth.users where email = 'yamada@rise-shooting.example.com');
 
 -- 選手佐藤の profiles を設定
 update public.profiles
 set username = '選手佐藤', role = 'player'
-where id = (select id from auth.users where email = 'sato@demo.risenote.com');
+where id = (select id from auth.users where email = 'sato@rise-shooting.example.com');
 
 -- 選手鈴木の profiles を設定
 update public.profiles
 set username = '選手鈴木', role = 'player'
-where id = (select id from auth.users where email = 'suzuki@demo.risenote.com');
+where id = (select id from auth.users where email = 'suzuki@rise-shooting.example.com');
 
 -- =====================================================
 -- 方法C: Supabase Admin API 経由で一括作成（上級者向け）
@@ -71,24 +71,24 @@ where id = (select id from auth.users where email = 'suzuki@demo.risenote.com');
 --   -H "apikey: $SERVICE_KEY" \
 --   -H "Authorization: Bearer $SERVICE_KEY" \
 --   -H "Content-Type: application/json" \
---   -d '{"email":"yamada@demo.risenote.com","password":"rise2024","email_confirm":true,"user_metadata":{"username":"コーチ山田","role":"coach"}}'
+--   -d '{"email":"yamada@rise-shooting.example.com","password":"rise2024","email_confirm":true,"user_metadata":{"username":"コーチ山田","role":"coach"}}'
 --
 -- # 選手佐藤
 -- curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
 --   -H "apikey: $SERVICE_KEY" \
 --   -H "Authorization: Bearer $SERVICE_KEY" \
 --   -H "Content-Type: application/json" \
---   -d '{"email":"sato@demo.risenote.com","password":"rise2024","email_confirm":true,"user_metadata":{"username":"選手佐藤","role":"player"}}'
+--   -d '{"email":"sato@rise-shooting.example.com","password":"rise2024","email_confirm":true,"user_metadata":{"username":"選手佐藤","role":"player"}}'
 --
 -- # 選手鈴木
 -- curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
 --   -H "apikey: $SERVICE_KEY" \
 --   -H "Authorization: Bearer $SERVICE_KEY" \
 --   -H "Content-Type: application/json" \
---   -d '{"email":"suzuki@demo.risenote.com","password":"rise2024","email_confirm":true,"user_metadata":{"username":"選手鈴木","role":"player"}}'
+--   -d '{"email":"suzuki@rise-shooting.example.com","password":"rise2024","email_confirm":true,"user_metadata":{"username":"選手鈴木","role":"player"}}'
 
 -- =====================================================
 -- 確認用クエリ
 -- =====================================================
--- select id, email from auth.users where email like '%@demo.risenote.com';
+-- select id, email from auth.users where email like '%@rise-shooting.example.com';
 -- select * from public.profiles;

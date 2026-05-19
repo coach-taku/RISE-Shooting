@@ -11,9 +11,9 @@ import { createClient } from '@/lib/supabase/client'
 // デモユーザー一覧
 // 名前と内部で使用する仮想メールアドレスを対応付ける
 const DEMO_USERS = [
-  { name: 'コーチ山田', email: 'yamada@demo.risenote.com' },
-  { name: '選手佐藤', email: 'sato@demo.risenote.com' },
-  { name: '選手鈴木', email: 'suzuki@demo.risenote.com' },
+  { name: 'コーチ山田', email: 'yamada@rise-shooting.example.com' },
+  { name: '選手佐藤', email: 'sato@rise-shooting.example.com' },
+  { name: '選手鈴木', email: 'suzuki@rise-shooting.example.com' },
 ]
 
 export default function LoginPage() {
