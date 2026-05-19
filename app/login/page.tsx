@@ -19,6 +19,8 @@ export default function LoginPage() {
   const router = useRouter()
   const [users, setUsers] = useState<UserEntry[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
+  // ユーザー一覧取得時のエラーメッセージ（画面に表示してデバッグしやすくする）
+  const [usersError, setUsersError] = useState('')
   const [selectedName, setSelectedName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -29,12 +31,26 @@ export default function LoginPage() {
     const fetchUsers = async () => {
       try {
         const res = await fetch('/api/auth/users-list')
-        const data = await res.json()
+        // レスポンスが JSON でない場合（404、500 など）も考慮
+        const text = await res.text()
+        let data: { users?: UserEntry[]; error?: string }
+        try {
+          data = JSON.parse(text)
+        } catch {
+          setUsersError(`サーバーからの応答が不正です (${res.status})`)
+          return
+        }
+
+        if (!res.ok || data.error) {
+          setUsersError(data.error ?? `ユーザー一覧の取得に失敗しました (${res.status})`)
+          return
+        }
+
         if (data.users) {
           setUsers(data.users)
         }
-      } catch {
-        // 取得に失敗してもフォームは表示する
+      } catch (e) {
+        setUsersError(`通信エラーが発生しました: ${e instanceof Error ? e.message : String(e)}`)
       } finally {
         setUsersLoading(false)
       }
@@ -136,6 +152,11 @@ export default function LoginPage() {
               <div className="w-full rounded-lg px-4 py-3 bg-white text-gray-400 text-sm">
                 読み込み中...
               </div>
+            ) : usersError ? (
+              /* ユーザー一覧の取得に失敗した場合 — エラー内容を表示 */
+              <div className="w-full rounded-lg px-4 py-3 bg-white text-red-500 text-xs">
+                ⚠️ {usersError}
+              </div>
             ) : (
               <select
                 value={selectedName}
@@ -176,7 +197,7 @@ export default function LoginPage() {
           {/* ログインボタン */}
           <button
             type="submit"
-            disabled={loading || usersLoading}
+            disabled={loading || usersLoading || !!usersError}
             className="w-full py-3 rounded-xl font-bold text-gray-900 transition-all duration-200 disabled:opacity-60"
             style={{ backgroundColor: '#e1c614' }}
           >
@@ -188,10 +209,12 @@ export default function LoginPage() {
           アカウントはコーチから発行されます
         </p>
 
-        {/* 名前が表示されない場合の案内 */}
-        {!usersLoading && users.length === 0 && (
+        {/* 名前が表示されない・エラーが出ている場合の案内 */}
+        {!usersLoading && (users.length === 0 || usersError) && (
           <div className="mt-4 p-3 rounded-xl text-center text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
-            <p className="text-black/70 mb-2">名前が表示されていません。</p>
+            <p className="text-black/70 mb-2">
+              {usersError ? 'ユーザー情報を読み込めませんでした。' : '名前が表示されていません。'}
+            </p>
             <a
               href="/setup"
               className="inline-block px-4 py-1.5 rounded-lg font-bold text-gray-900 text-xs"
