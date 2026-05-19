@@ -2,6 +2,7 @@
 
 // M-02: アカウント管理画面
 // コーチが選手アカウント作成・パスワードリセットを行う画面
+// ※ メールアドレス入力廃止: 「名前」と「パスワード」のみで登録できるよう変更
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -11,9 +12,8 @@ export default function AccountsPage() {
   const [players, setPlayers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 選手追加フォーム
+  // 選手追加フォーム（メールアドレス欄を廃止）
   const [newUsername, setNewUsername] = useState('')
-  const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [creating, setCreating] = useState(false)
   const [createMsg, setCreateMsg] = useState('')
@@ -40,7 +40,7 @@ export default function AccountsPage() {
 
   useEffect(() => { fetchPlayers() }, []) // eslint-disable-line
 
-  // 選手アカウント作成
+  // 選手アカウント作成（メールアドレスはサーバー側で自動生成）
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault()
     setCreating(true)
@@ -50,9 +50,9 @@ export default function AccountsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: newEmail,
         password: newPassword,
         username: newUsername,
+        // メールアドレスは送らない → サーバー側でダミーメールを自動生成
       }),
     })
     const data = await res.json()
@@ -60,7 +60,6 @@ export default function AccountsPage() {
     if (data.success) {
       setCreateMsg('✅ 選手アカウントを作成しました！')
       setNewUsername('')
-      setNewEmail('')
       setNewPassword('')
       fetchPlayers()
     } else {
@@ -127,17 +126,7 @@ export default function AccountsPage() {
                 className="w-full rounded-lg px-3 py-2 bg-white text-gray-800 text-sm focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block text-xs text-black/80 mb-1">メールアドレス（ログイン用）</label>
-              <input
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                required
-                placeholder="例: yamada@team.com"
-                className="w-full rounded-lg px-3 py-2 bg-white text-gray-800 text-sm focus:outline-none"
-              />
-            </div>
+            {/* メールアドレス欄を廃止 — システム内部でダミーメールを自動生成 */}
             <div>
               <label className="block text-xs text-black/80 mb-1">合言葉（パスワード）6文字以上</label>
               <input

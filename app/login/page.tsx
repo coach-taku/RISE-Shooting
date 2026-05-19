@@ -1,52 +1,89 @@
 'use client'
 
-// P-01: ログイン画面（デモ版）
-// 名前をプルダウンで選択し、合言葉（パスワード）を入力してログインする
-// 内部では選択した名前を仮想メールアドレスに変換して Supabase Auth を利用する
+// P-01: ログイン画面
+// 名前をプルダウンで選択し、合言葉（パスワード）を入力してログインする。
+// ユーザー一覧は DB（profiles テーブル）から動的に取得する。
+// 内部ではサーバー API 経由でダミーメールアドレスを逆引きし、Supabase Auth でログインする。
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-// デモユーザー一覧
-// 名前と内部で使用する仮想メールアドレスを対応付ける
-const DEMO_USERS = [
-  { name: 'コーチ山田', email: 'yamada@rise-shooting.example.com' },
-  { name: '選手佐藤', email: 'sato@rise-shooting.example.com' },
-  { name: '選手鈴木', email: 'suzuki@rise-shooting.example.com' },
-]
+// DB から取得するユーザー情報の型
+interface UserEntry {
+  username: string
+  role: string
+}
 
 export default function LoginPage() {
   const router = useRouter()
+  const [users, setUsers] = useState<UserEntry[]>([])
+  const [usersLoading, setUsersLoading] = useState(true)
   const [selectedName, setSelectedName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // ログイン画面が開いたとき、DB からユーザー一覧を取得する
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch('/api/auth/users-list')
+        const data = await res.json()
+        if (data.users) {
+          setUsers(data.users)
+        }
+      } catch {
+        // 取得に失敗してもフォームは表示する
+      } finally {
+        setUsersLoading(false)
+      }
+    }
+    fetchUsers()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    // 選択された名前から仮想メールアドレスを取得
-    const selectedUser = DEMO_USERS.find((u) => u.name === selectedName)
-    if (!selectedUser) {
+    if (!selectedName) {
       setError('名前を選択してください。')
       setLoading(false)
       return
     }
 
-    const supabase = createClient()
+    // サーバー API 経由で、選択した名前に対応するダミーメールアドレスを取得
+    let email = ''
+    try {
+      const res = await fetch('/api/auth/login-by-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: selectedName }),
+      })
+      const data = await res.json()
 
-    // 仮想メールアドレスとパスワードで Supabase Auth にログイン
+      if (!res.ok || !data.email) {
+        setError(data.error ?? 'ユーザー情報の取得に失敗しました。')
+        setLoading(false)
+        return
+      }
+      email = data.email
+    } catch {
+      setError('サーバーへの接続に失敗しました。')
+      setLoading(false)
+      return
+    }
+
+    // 取得したダミーメールアドレスとパスワードで Supabase Auth にログイン
+    const supabase = createClient()
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email: selectedUser.email,
+      email,
       password,
     })
 
     if (authError) {
-      // デバッグ用：Supabaseの生のエラーメッセージを表示（原因特定後に元に戻す）
-      setError(`[DEBUG] ${authError.message} (status: ${authError.status})`)
+      setError('名前または合言葉が正しくありません。')
       setLoading(false)
       return
     }
@@ -90,24 +127,30 @@ export default function LoginPage() {
         <h2 className="text-lg font-bold text-black mb-6 text-center">ログイン</h2>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          {/* 名前（プルダウン選択） */}
+          {/* 名前（プルダウン選択 — DB から動的取得） */}
           <div>
             <label className="block text-sm font-medium text-black mb-1">
               名前
             </label>
-            <select
-              value={selectedName}
-              onChange={(e) => setSelectedName(e.target.value)}
-              required
-              className="w-full rounded-lg px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 text-sm appearance-none"
-            >
-              <option value="">-- 名前を選んでください --</option>
-              {DEMO_USERS.map((user) => (
-                <option key={user.email} value={user.name}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
+            {usersLoading ? (
+              <div className="w-full rounded-lg px-4 py-3 bg-white text-gray-400 text-sm">
+                読み込み中...
+              </div>
+            ) : (
+              <select
+                value={selectedName}
+                onChange={(e) => setSelectedName(e.target.value)}
+                required
+                className="w-full rounded-lg px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 text-sm appearance-none"
+              >
+                <option value="">-- 名前を選んでください --</option>
+                {users.map((user) => (
+                  <option key={user.username} value={user.username}>
+                    {user.username}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* パスワード（合言葉） */}
@@ -133,7 +176,7 @@ export default function LoginPage() {
           {/* ログインボタン */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || usersLoading}
             className="w-full py-3 rounded-xl font-bold text-gray-900 transition-all duration-200 disabled:opacity-60"
             style={{ backgroundColor: '#e1c614' }}
           >
