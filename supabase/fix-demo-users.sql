@@ -9,9 +9,9 @@
 --   Supabase ダッシュボード > SQL Editor > New query に貼り付けて実行
 --
 -- 【対象ユーザー】
---   コーチ山田: yamada@demo.risenote.com / rise2024
---   選手佐藤:   sato@demo.risenote.com   / rise2024
---   選手鈴木:   suzuki@demo.risenote.com / rise2024
+--   コーチ山田: yamada@rise-shooting.example.com / rise2024
+--   選手佐藤:   sato@rise-shooting.example.com   / rise2024
+--   選手鈴木:   suzuki@rise-shooting.example.com / rise2024
 -- =====================================================
 
 
@@ -28,9 +28,9 @@ select
 from auth.users u
 left join public.profiles p on p.id = u.id
 where u.email in (
-  'yamada@demo.risenote.com',
-  'sato@demo.risenote.com',
-  'suzuki@demo.risenote.com'
+  'yamada@rise-shooting.example.com',
+  'sato@rise-shooting.example.com',
+  'suzuki@rise-shooting.example.com'
 );
 
 
@@ -45,7 +45,7 @@ set
   encrypted_password = crypt('rise2024', gen_salt('bf')),
   email_confirmed_at = coalesce(email_confirmed_at, now()),
   updated_at = now()
-where email = 'yamada@demo.risenote.com';
+where email = 'yamada@rise-shooting.example.com';
 
 -- 選手佐藤のパスワードリセット
 update auth.users
@@ -53,7 +53,7 @@ set
   encrypted_password = crypt('rise2024', gen_salt('bf')),
   email_confirmed_at = coalesce(email_confirmed_at, now()),
   updated_at = now()
-where email = 'sato@demo.risenote.com';
+where email = 'sato@rise-shooting.example.com';
 
 -- 選手鈴木のパスワードリセット
 update auth.users
@@ -61,7 +61,7 @@ set
   encrypted_password = crypt('rise2024', gen_salt('bf')),
   email_confirmed_at = coalesce(email_confirmed_at, now()),
   updated_at = now()
-where email = 'suzuki@demo.risenote.com';
+where email = 'suzuki@rise-shooting.example.com';
 
 
 -- =====================================================
@@ -73,7 +73,7 @@ where email = 'suzuki@demo.risenote.com';
 insert into public.profiles (id, username, role)
 select id, 'コーチ山田', 'coach'
 from auth.users
-where email = 'yamada@demo.risenote.com'
+where email = 'yamada@rise-shooting.example.com'
 on conflict (id) do update
   set username = 'コーチ山田', role = 'coach';
 
@@ -81,7 +81,7 @@ on conflict (id) do update
 insert into public.profiles (id, username, role)
 select id, '選手佐藤', 'player'
 from auth.users
-where email = 'sato@demo.risenote.com'
+where email = 'sato@rise-shooting.example.com'
 on conflict (id) do update
   set username = '選手佐藤', role = 'player';
 
@@ -89,7 +89,7 @@ on conflict (id) do update
 insert into public.profiles (id, username, role)
 select id, '選手鈴木', 'player'
 from auth.users
-where email = 'suzuki@demo.risenote.com'
+where email = 'suzuki@rise-shooting.example.com'
 on conflict (id) do update
   set username = '選手鈴木', role = 'player';
 
@@ -106,7 +106,7 @@ select
 from auth.users u
 left join public.profiles p on p.id = u.id
 where u.email in (
-  'yamada@demo.risenote.com',
-  'sato@demo.risenote.com',
-  'suzuki@demo.risenote.com'
+  'yamada@rise-shooting.example.com',
+  'sato@rise-shooting.example.com',
+  'suzuki@rise-shooting.example.com'
 );

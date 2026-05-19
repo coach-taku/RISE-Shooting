@@ -8,9 +8,9 @@ import { useState } from 'react'
 
 // デモユーザー情報（表示用）
 const DEMO_USERS = [
-  { name: 'コーチ山田', email: 'yamada@demo.risenote.com', role: 'コーチ', password: 'rise2024' },
-  { name: '選手佐藤',   email: 'sato@demo.risenote.com',   role: '選手',   password: 'rise2024' },
-  { name: '選手鈴木',   email: 'suzuki@demo.risenote.com', role: '選手',   password: 'rise2024' },
+  { name: 'コーチ山田', email: 'yamada@rise-shooting.example.com', role: 'コーチ', password: 'rise2024' },
+  { name: '選手佐藤',   email: 'sato@rise-shooting.example.com',   role: '選手',   password: 'rise2024' },
+  { name: '選手鈴木',   email: 'suzuki@rise-shooting.example.com', role: '選手',   password: 'rise2024' },
 ]
 
 // 診断APIから返ってくるユーザーの状態型

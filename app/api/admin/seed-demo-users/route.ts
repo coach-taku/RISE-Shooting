@@ -8,19 +8,19 @@ import { createAdminClient } from '@/lib/supabase/admin'
 // デモユーザー定義（ログイン画面のプルダウンと一致させること）
 const DEMO_USERS = [
   {
-    email: 'yamada@demo.risenote.com',
+    email: 'yamada@rise-shooting.example.com',
     password: 'rise2024',
     username: 'コーチ山田',
     role: 'coach',
   },
   {
-    email: 'sato@demo.risenote.com',
+    email: 'sato@rise-shooting.example.com',
     password: 'rise2024',
     username: '選手佐藤',
     role: 'player',
   },
   {
-    email: 'suzuki@demo.risenote.com',
+    email: 'suzuki@rise-shooting.example.com',
     password: 'rise2024',
     username: '選手鈴木',
     role: 'player',

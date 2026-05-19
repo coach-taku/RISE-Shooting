@@ -6,9 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 // デモユーザー定義（seed-demo-users と同一）
 const DEMO_USERS = [
-  { email: 'yamada@demo.risenote.com', username: 'コーチ山田', role: 'coach' },
-  { email: 'sato@demo.risenote.com', username: '選手佐藤', role: 'player' },
-  { email: 'suzuki@demo.risenote.com', username: '選手鈴木', role: 'player' },
+  { email: 'yamada@rise-shooting.example.com', username: 'コーチ山田', role: 'coach' },
+  { email: 'sato@rise-shooting.example.com', username: '選手佐藤', role: 'player' },
+  { email: 'suzuki@rise-shooting.example.com', username: '選手鈴木', role: 'player' },
 ]
 
 export async function GET() {
