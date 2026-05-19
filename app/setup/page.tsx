@@ -55,6 +55,7 @@ export default function SetupPage() {
 
   const statusLabel = (status: string) => {
     if (status === 'created') return '✅ 作成完了'
+    if (status === 'reset') return '✅ パスワード・権限を修復しました'
     if (status === 'already_exists') return '⚠️ 既に存在します'
     if (status === 'error') return '❌ エラー'
     return status
