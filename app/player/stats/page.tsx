@@ -118,8 +118,8 @@ export default function StatsPage() {
     <div className="max-w-lg mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-extrabold text-white">📊 マイ記録</h1>
-          <p className="text-sm text-white/70">{username} のショットチャート</p>
+          <h1 className="text-xl font-extrabold text-black">📊 マイ記録</h1>
+          <p className="text-sm text-black/70">{username} のショットチャート</p>
         </div>
         <Link
           href="/player/record"
@@ -140,7 +140,7 @@ export default function StatsPage() {
               className="px-3 py-1.5 rounded-full text-xs font-bold transition-all"
               style={{
                 backgroundColor: filter === f.value ? '#e1c614' : 'rgba(255,255,255,0.2)',
-                color: filter === f.value ? '#1a1a1a' : '#ffffff',
+                color: filter === f.value ? '#1a1a1a' : '#1a1a1a',
               }}
             >
               {f.label}
@@ -157,7 +157,7 @@ export default function StatsPage() {
               onChange={(e) => setCustomStart(e.target.value)}
               className="flex-1 rounded-lg px-2 py-1 text-xs bg-white text-gray-800"
             />
-            <span className="text-white text-xs self-center">〜</span>
+            <span className="text-black text-xs self-center">〜</span>
             <input
               type="date"
               value={customEnd}
@@ -180,24 +180,24 @@ export default function StatsPage() {
             className="rounded-xl p-3 text-center"
             style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
           >
-            <p className="text-xs text-white/70">{item.label}</p>
-            <p className="text-xl font-extrabold" style={{ color: '#e1c614' }}>{item.value}</p>
-            <p className="text-xs text-white/60">{item.sub}</p>
+            <p className="text-xs text-black/70">{item.label}</p>
+            <p className="text-xl font-extrabold" style={{ color: '#1e3a8a' }}>{item.value}</p>
+            <p className="text-xs text-black/60">{item.sub}</p>
           </div>
         ))}
       </div>
 
       {/* ショットチャート */}
       {loading ? (
-        <div className="text-center text-white py-10">データを読み込み中...</div>
+        <div className="text-center text-black py-10">データを読み込み中...</div>
       ) : totalAttempts === 0 ? (
         <div
           className="rounded-2xl p-8 text-center"
           style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
         >
           <p className="text-4xl mb-3">🏀</p>
-          <p className="text-white font-bold">この期間の記録はまだないよ！</p>
-          <p className="text-white/60 text-sm mt-1">練習したらすぐ記録しよう 💪</p>
+          <p className="text-black font-bold">この期間の記録はまだないよ！</p>
+          <p className="text-black/60 text-sm mt-1">練習したらすぐ記録しよう 💪</p>
           <Link
             href="/player/record"
             className="inline-block mt-4 px-6 py-2 rounded-xl font-bold text-gray-900 text-sm"
@@ -212,7 +212,7 @@ export default function StatsPage() {
 
           {/* エリア別一覧テーブル */}
           <div className="mt-4 rounded-2xl overflow-hidden shadow" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
-            <div className="px-4 py-3 font-bold text-white text-sm" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
+            <div className="px-4 py-3 font-bold text-black text-sm" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
               エリア別スタッツ
             </div>
             <div className="divide-y divide-white/10">
@@ -221,11 +221,11 @@ export default function StatsPage() {
                 .sort((a, b) => b.percentage - a.percentage)
                 .map((z) => (
                   <div key={z.area_name} className="flex items-center px-4 py-2">
-                    <span className="text-xs text-white/70 flex-1">{z.label}</span>
-                    <span className="text-xs text-white/60 mr-3">{z.successes}/{z.attempts}</span>
+                    <span className="text-xs text-black/70 flex-1">{z.label}</span>
+                    <span className="text-xs text-black/60 mr-3">{z.successes}/{z.attempts}</span>
                     <span
                       className="text-sm font-bold w-12 text-right"
-                      style={{ color: '#e1c614' }}
+                      style={{ color: '#1e3a8a' }}
                     >
                       {z.percentage.toFixed(0)}%
                     </span>
