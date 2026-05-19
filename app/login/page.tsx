@@ -45,7 +45,8 @@ export default function LoginPage() {
     })
 
     if (authError) {
-      setError('名前または合言葉が正しくありません。もう一度確認してください。')
+      // デバッグ用：Supabaseの生のエラーメッセージを表示（原因特定後に元に戻す）
+      setError(`[DEBUG] ${authError.message} (status: ${authError.status})`)
       setLoading(false)
       return
     }
