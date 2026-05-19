@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   '/login',
   '/setup',
   '/api/admin/seed-demo-users', // セットアップページから未ログインで呼ぶため除外
+  '/api/admin/debug-auth',      // 診断API（ログイン前に状態確認するため除外）
 ]
 
 export async function proxy(request: NextRequest) {

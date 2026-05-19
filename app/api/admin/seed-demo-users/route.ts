@@ -1,5 +1,5 @@
-// デモ用アカウント一括作成 API ルート
-// Supabase に3名のデモユーザーが存在しない場合に自動作成する
+// デモ用アカウント一括作成・修復 API ルート
+// 既存ユーザーも含めてパスワード・profiles を確実に正しい状態にする
 // Service Role Key を使用するため、サーバーサイドのみで実行
 
 import { NextResponse } from 'next/server'
@@ -28,16 +28,16 @@ const DEMO_USERS = [
 ]
 
 export async function POST() {
-  // 環境変数チェック（Vercelに設定されているか確認）
+  // 環境変数チェック
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return NextResponse.json(
-      { error: '環境変数 NEXT_PUBLIC_SUPABASE_URL が設定されていません。Vercelの環境変数設定を確認してください。' },
+      { error: '環境変数 NEXT_PUBLIC_SUPABASE_URL が設定されていません。' },
       { status: 500 }
     )
   }
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
-      { error: '環境変数 SUPABASE_SERVICE_ROLE_KEY が設定されていません。Vercelの環境変数設定を確認してください。' },
+      { error: '環境変数 SUPABASE_SERVICE_ROLE_KEY が設定されていません。' },
       { status: 500 }
     )
   }
@@ -46,7 +46,7 @@ export async function POST() {
     const adminClient = createAdminClient()
     const results: { email: string; status: string; detail?: string }[] = []
 
-    // 既存ユーザー一覧を1回だけ取得（ループ内で毎回呼ばないよう最適化）
+    // 既存ユーザー一覧を取得
     const { data: existingUsersData, error: listError } = await adminClient.auth.admin.listUsers()
     if (listError) {
       return NextResponse.json(
@@ -55,29 +55,70 @@ export async function POST() {
       )
     }
 
-    const existingEmails = new Set(existingUsersData?.users?.map((u) => u.email) ?? [])
+    const existingUserMap = new Map(
+      existingUsersData?.users?.map((u) => [u.email, u.id]) ?? []
+    )
 
     for (const user of DEMO_USERS) {
-      // 既存ユーザーの確認
-      if (existingEmails.has(user.email)) {
-        results.push({ email: user.email, status: 'already_exists' })
-        continue
-      }
+      const existingId = existingUserMap.get(user.email)
 
-      // 新規作成
-      const { error } = await adminClient.auth.admin.createUser({
-        email: user.email,
-        password: user.password,
-        email_confirm: true, // メール確認をスキップ
-        user_metadata: {
-          username: user.username,
-          role: user.role,
-        },
-      })
+      if (existingId) {
+        // 既存ユーザー：パスワードと user_metadata を強制リセット
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(
+          existingId,
+          {
+            password: user.password,
+            email_confirm: true,
+            user_metadata: {
+              username: user.username,
+              role: user.role,
+            },
+          }
+        )
+        if (updateError) {
+          results.push({ email: user.email, status: 'error', detail: `パスワードリセット失敗: ${updateError.message}` })
+          continue
+        }
 
-      if (error) {
-        results.push({ email: user.email, status: 'error', detail: error.message })
+        // profiles テーブルも確実に更新
+        const { error: profileError } = await adminClient
+          .from('profiles')
+          .upsert(
+            { id: existingId, username: user.username, role: user.role },
+            { onConflict: 'id' }
+          )
+        if (profileError) {
+          results.push({ email: user.email, status: 'error', detail: `profile更新失敗: ${profileError.message}` })
+          continue
+        }
+
+        results.push({ email: user.email, status: 'reset' })
       } else {
+        // 新規ユーザー：作成
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+          email: user.email,
+          password: user.password,
+          email_confirm: true,
+          user_metadata: {
+            username: user.username,
+            role: user.role,
+          },
+        })
+        if (createError) {
+          results.push({ email: user.email, status: 'error', detail: createError.message })
+          continue
+        }
+
+        // profiles テーブルに手動で挿入（トリガーが失敗する場合の保険）
+        if (newUser?.user?.id) {
+          await adminClient
+            .from('profiles')
+            .upsert(
+              { id: newUser.user.id, username: user.username, role: user.role },
+              { onConflict: 'id' }
+            )
+        }
+
         results.push({ email: user.email, status: 'created' })
       }
     }
