@@ -76,10 +76,10 @@ export default function LoginPage() {
       {/* ロゴ・タイトル */}
       <div className="mb-8 text-center">
         <div className="text-5xl mb-3">🏀</div>
-        <h1 className="text-3xl font-extrabold tracking-wider" style={{ color: '#e1c614' }}>
+        <h1 className="text-3xl font-extrabold tracking-wider" style={{ color: '#1e3a8a' }}>
           RISE Shooting
         </h1>
-        <p className="mt-1 text-sm text-white/80">シューティング記録・分析アプリ</p>
+        <p className="mt-1 text-sm text-black/80">シューティング記録・分析アプリ</p>
       </div>
 
       {/* ログインカード */}
@@ -87,12 +87,12 @@ export default function LoginPage() {
         className="w-full max-w-sm rounded-2xl shadow-2xl p-8"
         style={{ backgroundColor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
       >
-        <h2 className="text-lg font-bold text-white mb-6 text-center">ログイン</h2>
+        <h2 className="text-lg font-bold text-black mb-6 text-center">ログイン</h2>
 
         <form onSubmit={handleLogin} className="space-y-4">
           {/* 名前（プルダウン選択） */}
           <div>
-            <label className="block text-sm font-medium text-white mb-1">
+            <label className="block text-sm font-medium text-black mb-1">
               名前
             </label>
             <select
@@ -112,7 +112,7 @@ export default function LoginPage() {
 
           {/* パスワード（合言葉） */}
           <div>
-            <label className="block text-sm font-medium text-white mb-1">
+            <label className="block text-sm font-medium text-black mb-1">
               合言葉（パスワード）
             </label>
             <input
@@ -141,7 +141,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-white/60 text-center">
+        <p className="mt-4 text-xs text-black/60 text-center">
           アカウントはコーチから発行されます
         </p>
       </div>

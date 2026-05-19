@@ -135,22 +135,22 @@ export default function CoachDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-white">データを読み込み中...</p>
+        <p className="text-black">データを読み込み中...</p>
       </div>
     )
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-extrabold text-white mb-1">📋 コーチダッシュボード</h1>
-      <p className="text-white/70 text-sm mb-6">チーム全体のシューティング状況</p>
+      <h1 className="text-2xl font-extrabold text-black mb-1">📋 コーチダッシュボード</h1>
+      <p className="text-black/70 text-sm mb-6">チーム全体のシューティング状況</p>
 
       {/* ===== 努力量ランキング ===== */}
       <section className="mb-8">
-        <h2 className="text-lg font-bold text-white mb-3">🔥 努力量ランキング（総試投数）</h2>
+        <h2 className="text-lg font-bold text-black mb-3">🔥 努力量ランキング（総試投数）</h2>
         <div className="rounded-2xl overflow-hidden shadow-lg" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
           {playerStats.length === 0 ? (
-            <p className="text-white/60 p-6 text-center">まだ記録がありません</p>
+            <p className="text-black/60 p-6 text-center">まだ記録がありません</p>
           ) : (
             <div className="divide-y divide-white/10">
               {playerStats.map((stat, idx) => (
@@ -171,15 +171,15 @@ export default function CoachDashboard() {
                     </span>
 
                     {/* 選手名 */}
-                    <span className="text-white font-bold flex-1">{stat.profile.username}</span>
+                    <span className="text-black font-bold flex-1">{stat.profile.username}</span>
 
                     {/* スタッツ */}
                     <div className="text-right">
-                      <p className="text-white font-bold">{stat.totalAttempts}<span className="text-xs text-white/60 ml-1">本</span></p>
-                      <p className="text-xs text-white/60">{stat.totalSuccesses}成功 / {stat.percentage.toFixed(1)}%</p>
+                      <p className="text-black font-bold">{stat.totalAttempts}<span className="text-xs text-black/60 ml-1">本</span></p>
+                      <p className="text-xs text-black/60">{stat.totalSuccesses}成功 / {stat.percentage.toFixed(1)}%</p>
                     </div>
 
-                    <span className="ml-2 text-white/40 text-sm">
+                    <span className="ml-2 text-black/40 text-sm">
                       {selectedPlayer?.id === stat.profile.id ? '▲' : '▼'}
                     </span>
                   </button>
@@ -188,19 +188,19 @@ export default function CoachDashboard() {
                   {selectedPlayer?.id === stat.profile.id && (
                     <div className="px-4 py-3" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
                       {loadingDetail ? (
-                        <p className="text-white/60 text-sm">読み込み中...</p>
+                        <p className="text-black/60 text-sm">読み込み中...</p>
                       ) : playerRecords.length === 0 ? (
-                        <p className="text-white/60 text-sm">記録がありません</p>
+                        <p className="text-black/60 text-sm">記録がありません</p>
                       ) : (
                         <>
-                          <p className="text-white/70 text-xs mb-2">直近の記録（最大50件）</p>
+                          <p className="text-black/70 text-xs mb-2">直近の記録（最大50件）</p>
                           <div className="space-y-1 max-h-48 overflow-y-auto">
                             {playerRecords.map((rec) => (
                               <div key={rec.id} className="flex items-center text-xs">
-                                <span className="text-white/50 w-20 flex-shrink-0">{rec.date}</span>
-                                <span className="text-white/80 flex-1">{rec.area_name.replace(/^(3P|2P)_/, '')}</span>
-                                <span className="text-white">{rec.successes}/{rec.attempts}</span>
-                                <span className="text-yellow-300 w-12 text-right">
+                                <span className="text-black/50 w-20 flex-shrink-0">{rec.date}</span>
+                                <span className="text-black/80 flex-1">{rec.area_name.replace(/^(3P|2P)_/, '')}</span>
+                                <span className="text-black">{rec.successes}/{rec.attempts}</span>
+                                <span className="text-blue-900 w-12 text-right">
                                   {((rec.successes / rec.attempts) * 100).toFixed(0)}%
                                 </span>
                               </div>
@@ -219,10 +219,10 @@ export default function CoachDashboard() {
 
       {/* ===== エリア別トップスタッツ ===== */}
       <section>
-        <h2 className="text-lg font-bold text-white mb-3">🎯 エリア別 No.1選手</h2>
+        <h2 className="text-lg font-bold text-black mb-3">🎯 エリア別 No.1選手</h2>
         {areaTopStats.length === 0 ? (
           <div className="rounded-2xl p-6 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-            <p className="text-white/60">まだデータが十分ありません（各エリア10本以上必要）</p>
+            <p className="text-black/60">まだデータが十分ありません（各エリア10本以上必要）</p>
           </div>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -233,11 +233,11 @@ export default function CoachDashboard() {
                 style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}
               >
                 <div className="flex-1">
-                  <p className="text-xs text-white/60">{area.label}</p>
-                  <p className="text-white font-bold">{area.topPlayer}</p>
-                  <p className="text-xs text-white/50">{area.successes}/{area.attempts}</p>
+                  <p className="text-xs text-black/60">{area.label}</p>
+                  <p className="text-black font-bold">{area.topPlayer}</p>
+                  <p className="text-xs text-black/50">{area.successes}/{area.attempts}</p>
                 </div>
-                <span className="text-2xl font-extrabold" style={{ color: '#e1c614' }}>
+                <span className="text-2xl font-extrabold" style={{ color: '#1e3a8a' }}>
                   {area.percentage.toFixed(0)}%
                 </span>
               </div>

@@ -119,10 +119,10 @@ export default function SetupPage() {
       {/* ヘッダー */}
       <div className="mb-8 text-center">
         <div className="text-4xl mb-2">⚙️</div>
-        <h1 className="text-2xl font-extrabold" style={{ color: '#e1c614' }}>
+        <h1 className="text-2xl font-extrabold" style={{ color: '#1e3a8a' }}>
           RISE Shooting
         </h1>
-        <p className="text-white/80 text-sm mt-1">初期デモアカウント セットアップ</p>
+        <p className="text-black/80 text-sm mt-1">初期デモアカウント セットアップ</p>
       </div>
 
       {/* セットアップカード */}
@@ -130,8 +130,8 @@ export default function SetupPage() {
         className="w-full max-w-md rounded-2xl shadow-2xl p-6 mb-4"
         style={{ backgroundColor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
       >
-        <h2 className="text-white font-bold text-lg mb-2">デモアカウントを作成する</h2>
-        <p className="text-white/70 text-sm mb-5">
+        <h2 className="text-black font-bold text-lg mb-2">デモアカウントを作成する</h2>
+        <p className="text-black/70 text-sm mb-5">
           以下の3名のアカウントを Supabase に自動作成します。<br />
           すでに作成済みの場合でも、パスワードや権限を修復できます。
         </p>
@@ -140,7 +140,7 @@ export default function SetupPage() {
         <div className="rounded-xl overflow-hidden mb-5" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-white/50 text-xs">
+              <tr className="text-black/50 text-xs">
                 <th className="text-left px-3 py-2">名前</th>
                 <th className="text-left px-3 py-2">権限</th>
                 <th className="text-left px-3 py-2">合言葉</th>
@@ -149,9 +149,9 @@ export default function SetupPage() {
             <tbody className="divide-y divide-white/10">
               {DEMO_USERS.map((u) => (
                 <tr key={u.email}>
-                  <td className="px-3 py-2 text-white font-medium">{u.name}</td>
-                  <td className="px-3 py-2 text-white/70">{u.role}</td>
-                  <td className="px-3 py-2 text-white/70 font-mono">{u.password}</td>
+                  <td className="px-3 py-2 text-black font-medium">{u.name}</td>
+                  <td className="px-3 py-2 text-black/70">{u.role}</td>
+                  <td className="px-3 py-2 text-black/70 font-mono">{u.password}</td>
                 </tr>
               ))}
             </tbody>
@@ -164,7 +164,7 @@ export default function SetupPage() {
             {results.map((r) => (
               <div key={r.email} className="flex flex-col text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/70">{r.email}</span>
+                  <span className="text-black/70">{r.email}</span>
                   <span className="font-medium" style={{ color: r.status === 'error' ? '#fca5a5' : '#86efac' }}>
                     {statusLabel(r.status)}
                   </span>
@@ -211,7 +211,7 @@ export default function SetupPage() {
           </a>
         )}
 
-        <p className="text-xs text-white/40 text-center">
+        <p className="text-xs text-black/40 text-center">
           ※ このページはデモ初期設定専用です
         </p>
       </div>
@@ -221,8 +221,8 @@ export default function SetupPage() {
         className="w-full max-w-md rounded-2xl shadow-2xl p-6"
         style={{ backgroundColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}
       >
-        <h2 className="text-white font-bold text-base mb-2">🔍 ログインできない場合の診断</h2>
-        <p className="text-white/60 text-xs mb-4">
+        <h2 className="text-black font-bold text-base mb-2">🔍 ログインできない場合の診断</h2>
+        <p className="text-black/60 text-xs mb-4">
           アカウントの状態を詳しく確認します。ログインエラーの原因特定に使用してください。
         </p>
 
@@ -247,10 +247,10 @@ export default function SetupPage() {
             {/* 環境変数チェック */}
             {diagResult?.envCheck && (
               <div className="p-3 rounded-xl text-xs" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                <p className="text-white/70 font-bold mb-2">環境変数</p>
+                <p className="text-black/70 font-bold mb-2">環境変数</p>
                 {Object.entries(diagResult.envCheck).map(([k, v]) => (
                   <div key={k} className="flex justify-between mb-1">
-                    <span className="text-white/50 text-xs">{k}</span>
+                  <span className="text-black/50 text-xs">{k}</span>
                     <span className="font-mono text-xs" style={{ color: v ? '#86efac' : '#fca5a5' }}>
                       {String(v)}
                     </span>
@@ -262,14 +262,14 @@ export default function SetupPage() {
             {/* デモユーザー状態 */}
             {diagResult?.demo_user_status && (
               <div className="space-y-2">
-                <p className="text-white/70 text-xs font-bold">デモユーザーの状態</p>
+                <p className="text-black/70 text-xs font-bold">デモユーザーの状態</p>
                 {diagResult.demo_user_status.map((u) => (
                   <div key={u.email} className="p-3 rounded-xl text-xs" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-white font-bold">{diagUserIcon(u)} {u.username}</span>
-                      <span className="text-white/50">{u.email}</span>
+                      <span className="text-black font-bold">{diagUserIcon(u)} {u.username}</span>
+                      <span className="text-black/50">{u.email}</span>
                     </div>
-                    <div className="space-y-1 text-white/60">
+                    <div className="space-y-1 text-black/60">
                       <div className="flex justify-between">
                         <span>auth.users に存在</span>
                         <span style={{ color: u.exists_in_auth ? '#86efac' : '#fca5a5' }}>
@@ -296,7 +296,7 @@ export default function SetupPage() {
                           </div>
                           <div className="flex justify-between">
                             <span>最終ログイン</span>
-                            <span className="text-white/40">
+                            <span className="text-black/40">
                               {u.last_sign_in ? new Date(u.last_sign_in).toLocaleString('ja-JP') : 'なし'}
                             </span>
                           </div>
@@ -311,22 +311,22 @@ export default function SetupPage() {
             {/* 診断結果のまとめと対処法 */}
             {diagResult?.demo_user_status && (
               <div className="p-3 rounded-xl text-xs" style={{ backgroundColor: 'rgba(225,198,20,0.1)', border: '1px solid rgba(225,198,20,0.3)' }}>
-                <p className="font-bold mb-2" style={{ color: '#e1c614' }}>📋 診断まとめ・対処法</p>
+                <p className="font-bold mb-2" style={{ color: '#1e3a8a' }}>📋 診断まとめ・対処法</p>
                 {diagResult.demo_user_status.some((u) => !u.exists_in_auth) && (
-                  <p className="text-white/70 mb-1">• 存在しないユーザーがいます → 上の「デモアカウントを作成する」を実行してください</p>
+                  <p className="text-black/70 mb-1">• 存在しないユーザーがいます → 上の「デモアカウントを作成する」を実行してください</p>
                 )}
                 {diagResult.demo_user_status.some((u) => u.exists_in_auth && !u.email_confirmed) && (
-                  <p className="text-white/70 mb-1">• メール認証が未完了のユーザーがいます → 「デモアカウントを作成する」を実行すると修復されます</p>
+                  <p className="text-black/70 mb-1">• メール認証が未完了のユーザーがいます → 「デモアカウントを作成する」を実行すると修復されます</p>
                 )}
                 {diagResult.demo_user_status.some((u) => u.exists_in_auth && (!u.profile || typeof u.profile === 'string')) && (
-                  <p className="text-white/70 mb-1">• profiles テーブルにデータがないユーザーがいます → 「デモアカウントを作成する」を実行してください</p>
+                  <p className="text-black/70 mb-1">• profiles テーブルにデータがないユーザーがいます → 「デモアカウントを作成する」を実行してください</p>
                 )}
                 {diagResult.demo_user_status.every((u) =>
                   u.exists_in_auth && u.email_confirmed && typeof u.profile === 'object' && u.profile !== null
                 ) && (
                   <p style={{ color: '#86efac' }}>• すべてのアカウントが正常な状態です。</p>
                 )}
-                <p className="text-white/50 mt-2">
+                <p className="text-black/50 mt-2">
                   ※ それでもログインできない場合は、「デモアカウントを作成する」でパスワードを再設定してください。
                 </p>
               </div>

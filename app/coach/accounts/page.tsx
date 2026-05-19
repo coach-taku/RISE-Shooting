@@ -108,16 +108,16 @@ export default function AccountsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-extrabold text-white mb-1">👥 アカウント管理</h1>
-      <p className="text-sm text-white/70 mb-6">選手の登録と合言葉管理</p>
+      <h1 className="text-xl font-extrabold text-black mb-1">👥 アカウント管理</h1>
+      <p className="text-sm text-black/70 mb-6">選手の登録と合言葉管理</p>
 
       {/* ===== 選手アカウント作成 ===== */}
       <section className="mb-8">
-        <h2 className="text-base font-bold text-white mb-3">＋ 新しい選手を追加</h2>
+        <h2 className="text-base font-bold text-black mb-3">＋ 新しい選手を追加</h2>
         <div className="rounded-2xl p-5 shadow" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
           <form onSubmit={handleCreatePlayer} className="space-y-3">
             <div>
-              <label className="block text-xs text-white/80 mb-1">選手名（表示名）</label>
+              <label className="block text-xs text-black/80 mb-1">選手名（表示名）</label>
               <input
                 type="text"
                 value={newUsername}
@@ -128,7 +128,7 @@ export default function AccountsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-white/80 mb-1">メールアドレス（ログイン用）</label>
+              <label className="block text-xs text-black/80 mb-1">メールアドレス（ログイン用）</label>
               <input
                 type="email"
                 value={newEmail}
@@ -139,7 +139,7 @@ export default function AccountsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-white/80 mb-1">合言葉（パスワード）6文字以上</label>
+              <label className="block text-xs text-black/80 mb-1">合言葉（パスワード）6文字以上</label>
               <input
                 type="text"
                 value={newPassword}
@@ -151,7 +151,7 @@ export default function AccountsPage() {
               />
             </div>
             {createMsg && (
-              <p className="text-sm text-white font-medium">{createMsg}</p>
+              <p className="text-sm text-black font-medium">{createMsg}</p>
             )}
             <button
               type="submit"
@@ -167,12 +167,12 @@ export default function AccountsPage() {
 
       {/* ===== 選手一覧とパスワードリセット ===== */}
       <section>
-        <h2 className="text-base font-bold text-white mb-3">選手一覧</h2>
+        <h2 className="text-base font-bold text-black mb-3">選手一覧</h2>
         {loading ? (
-          <p className="text-white/60">読み込み中...</p>
+          <p className="text-black/60">読み込み中...</p>
         ) : players.length === 0 ? (
           <div className="rounded-2xl p-6 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-            <p className="text-white/60">まだ選手がいません。上から追加してください。</p>
+            <p className="text-black/60">まだ選手がいません。上から追加してください。</p>
           </div>
         ) : (
           <div className="rounded-2xl overflow-hidden shadow" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
@@ -180,13 +180,13 @@ export default function AccountsPage() {
               {players.map((player) => (
                 <div key={player.id} className="flex items-center px-4 py-3">
                   <div className="flex-1">
-                    <p className="text-white font-bold">{player.username}</p>
-                    <p className="text-xs text-white/50">登録日: {player.created_at.split('T')[0]}</p>
+                    <p className="text-black font-bold">{player.username}</p>
+                    <p className="text-xs text-black/50">登録日: {player.created_at.split('T')[0]}</p>
                   </div>
                   <button
                     onClick={() => openResetModal(player)}
                     className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#ffffff' }}
+                    style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#1a1a1a' }}
                   >
                     🔑 合言葉リセット
                   </button>
@@ -201,13 +201,13 @@ export default function AccountsPage() {
       {showResetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: '#2a2a2a' }}>
-            <h3 className="text-white font-bold text-lg mb-1">🔑 合言葉リセット</h3>
-            <p className="text-white/60 text-sm mb-4">
+            <h3 className="text-black font-bold text-lg mb-1">🔑 合言葉リセット</h3>
+            <p className="text-black/60 text-sm mb-4">
               {resetTargetName} さんの合言葉を変更します
             </p>
             <form onSubmit={handleReset} className="space-y-3">
               <div>
-                <label className="block text-xs text-white/80 mb-1">新しい合言葉（6文字以上）</label>
+                <label className="block text-xs text-black/80 mb-1">新しい合言葉（6文字以上）</label>
                 <input
                   type="text"
                   value={resetPassword}
@@ -219,13 +219,13 @@ export default function AccountsPage() {
                 />
               </div>
               {resetMsg && (
-                <p className="text-sm text-white font-medium">{resetMsg}</p>
+                <p className="text-sm text-black font-medium">{resetMsg}</p>
               )}
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowResetModal(false)}
-                  className="flex-1 py-2 rounded-xl text-sm text-white/70 border border-white/20"
+                  className="flex-1 py-2 rounded-xl text-sm text-black/70 border border-black/20"
                 >
                   キャンセル
                 </button>

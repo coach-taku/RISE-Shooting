@@ -112,8 +112,8 @@ export default function RecordPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
-      <h1 className="text-xl font-extrabold text-white mb-1">✏️ シュート記録</h1>
-      <p className="text-sm text-white/70 mb-6">今日の練習を記録しよう！</p>
+      <h1 className="text-xl font-extrabold text-black mb-1">✏️ シュート記録</h1>
+      <p className="text-sm text-black/70 mb-6">今日の練習を記録しよう！</p>
 
       {/* 成功メッセージ */}
       {successMsg && (
@@ -131,7 +131,7 @@ export default function RecordPage() {
           className="rounded-2xl p-4 shadow"
           style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
         >
-          <label className="block text-sm font-medium text-white mb-1">📅 実施日</label>
+          <label className="block text-sm font-medium text-black mb-1">📅 実施日</label>
           <input
             type="date"
             value={date}
@@ -150,12 +150,12 @@ export default function RecordPage() {
             style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-white font-bold text-sm">エリア {idx + 1}</span>
+              <span className="text-black font-bold text-sm">エリア {idx + 1}</span>
               {entries.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeEntry(idx)}
-                  className="text-xs text-white/60 hover:text-red-300 transition-colors"
+                  className="text-xs text-black/60 hover:text-red-300 transition-colors"
                 >
                   ✕ 削除
                 </button>
@@ -164,7 +164,7 @@ export default function RecordPage() {
 
             {/* エリア選択 */}
             <div className="mb-3">
-              <label className="block text-xs text-white/80 mb-1">エリア選択</label>
+              <label className="block text-xs text-black/80 mb-1">エリア選択</label>
               <select
                 value={entry.area_name}
                 onChange={(e) => updateEntry(idx, 'area_name', e.target.value)}
@@ -186,7 +186,7 @@ export default function RecordPage() {
 
             {/* 成功数入力（0〜10） */}
             <div>
-              <label className="block text-xs text-white/80 mb-1">
+              <label className="block text-xs text-black/80 mb-1">
                 10本中 何本入った？
               </label>
               <div className="grid grid-cols-6 gap-1">
@@ -199,7 +199,7 @@ export default function RecordPage() {
                     style={{
                       backgroundColor:
                         entry.successes === String(n) ? '#e1c614' : 'rgba(255,255,255,0.3)',
-                      color: entry.successes === String(n) ? '#1a1a1a' : '#ffffff',
+                      color: entry.successes === String(n) ? '#1a1a1a' : '#1a1a1a',
                     }}
                   >
                     {n}
@@ -215,7 +215,7 @@ export default function RecordPage() {
           <button
             type="button"
             onClick={addEntry}
-            className="w-full py-3 rounded-xl border-2 border-dashed text-white/70 hover:text-white hover:border-white transition-colors text-sm font-medium"
+            className="w-full py-3 rounded-xl border-2 border-dashed text-black/70 hover:text-black hover:border-black transition-colors text-sm font-medium"
           >
             ＋ エリアを追加（最大5エリア）
           </button>
