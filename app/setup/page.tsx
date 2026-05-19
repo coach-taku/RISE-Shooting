@@ -133,7 +133,8 @@ export default function SetupPage() {
         <h2 className="text-black font-bold text-lg mb-2">デモアカウントを作成する</h2>
         <p className="text-black/70 text-sm mb-5">
           以下の3名のアカウントを Supabase に自動作成します。<br />
-          すでに作成済みの場合でも、パスワードや権限を修復できます。
+          すでに作成済みの場合でも、パスワードや権限を修復できます。<br />
+          <span className="text-black/50 text-xs">※ ログイン画面で名前が表示されない場合はここから作成してください。</span>
         </p>
 
         {/* デモユーザー一覧 */}

@@ -187,6 +187,20 @@ export default function LoginPage() {
         <p className="mt-4 text-xs text-black/60 text-center">
           アカウントはコーチから発行されます
         </p>
+
+        {/* 名前が表示されない場合の案内 */}
+        {!usersLoading && users.length === 0 && (
+          <div className="mt-4 p-3 rounded-xl text-center text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
+            <p className="text-black/70 mb-2">名前が表示されていません。</p>
+            <a
+              href="/setup"
+              className="inline-block px-4 py-1.5 rounded-lg font-bold text-gray-900 text-xs"
+              style={{ backgroundColor: '#e1c614' }}
+            >
+              ⚙️ セットアップページへ
+            </a>
+          </div>
+        )}
       </div>
     </div>
   )
