@@ -1,9 +1,10 @@
 // ブラウザ（クライアントコンポーネント）用 Supabase クライアント
 import { createBrowserClient } from '@supabase/ssr'
+import { getSupabaseUrl } from './url'
 
 export function createClient() {
   return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getSupabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
