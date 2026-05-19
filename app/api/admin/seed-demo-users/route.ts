@@ -46,7 +46,7 @@ export async function POST() {
     const adminClient = createAdminClient()
     const results: { email: string; status: string; detail?: string }[] = []
 
-    // 既存ユーザー一覧を取得
+    // 既存ユーザー一覧を取得（メールアドレス→IDのマップを作成）
     const { data: existingUsersData, error: listError } = await adminClient.auth.admin.listUsers()
     if (listError) {
       return NextResponse.json(
@@ -59,11 +59,21 @@ export async function POST() {
       existingUsersData?.users?.map((u) => [u.email, u.id]) ?? []
     )
 
+    // 既存の profiles を username→id のマップで取得
+    // （username の unique 制約バッティングを事前に回避するため）
+    const { data: existingProfiles } = await adminClient
+      .from('profiles')
+      .select('id, username')
+
+    const existingProfileUsernameMap = new Map(
+      (existingProfiles ?? []).map((p: { id: string; username: string }) => [p.username, p.id])
+    )
+
     for (const user of DEMO_USERS) {
       const existingId = existingUserMap.get(user.email)
 
       if (existingId) {
-        // 既存ユーザー：パスワードと user_metadata を強制リセット
+        // ── 既存ユーザー：パスワードと user_metadata を強制リセット ──
         const { error: updateError } = await adminClient.auth.admin.updateUserById(
           existingId,
           {
@@ -76,11 +86,15 @@ export async function POST() {
           }
         )
         if (updateError) {
-          results.push({ email: user.email, status: 'error', detail: `パスワードリセット失敗: ${updateError.message}` })
+          results.push({
+            email: user.email,
+            status: 'error',
+            detail: `パスワードリセット失敗: ${updateError.message}`,
+          })
           continue
         }
 
-        // profiles テーブルも確実に更新
+        // profiles も upsert で確実に更新
         const { error: profileError } = await adminClient
           .from('profiles')
           .upsert(
@@ -88,13 +102,29 @@ export async function POST() {
             { onConflict: 'id' }
           )
         if (profileError) {
-          results.push({ email: user.email, status: 'error', detail: `profile更新失敗: ${profileError.message}` })
+          results.push({
+            email: user.email,
+            status: 'error',
+            detail: `profile更新失敗: ${profileError.message}`,
+          })
           continue
         }
 
         results.push({ email: user.email, status: 'reset' })
       } else {
-        // 新規ユーザー：作成
+        // ── 新規ユーザー：作成前の事前クリーンアップ ──
+
+        // 同じ username が別ユーザーの profiles に存在する場合、削除する
+        // （handle_new_user トリガーが unique 制約エラーを起こすのを防ぐ）
+        const conflictingProfileId = existingProfileUsernameMap.get(user.username)
+        if (conflictingProfileId) {
+          // profiles を先に削除（auth.users の削除は後で行う）
+          await adminClient.from('profiles').delete().eq('id', conflictingProfileId)
+          // auth.users からも削除（旧ドメインユーザーのクリーンアップ）
+          await adminClient.auth.admin.deleteUser(conflictingProfileId)
+        }
+
+        // 新規ユーザー作成
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
           email: user.email,
           password: user.password,
@@ -109,14 +139,24 @@ export async function POST() {
           continue
         }
 
-        // profiles テーブルに手動で挿入（トリガーが失敗する場合の保険）
+        // profiles テーブルに手動で upsert
+        // （handle_new_user トリガーが正常に動いた場合も、role が正しくなるよう上書き）
         if (newUser?.user?.id) {
-          await adminClient
+          const { error: profileError } = await adminClient
             .from('profiles')
             .upsert(
               { id: newUser.user.id, username: user.username, role: user.role },
               { onConflict: 'id' }
             )
+          if (profileError) {
+            // ユーザーは作成できたが profiles の更新に失敗（ログのみ、エラー扱いにしない）
+            results.push({
+              email: user.email,
+              status: 'created',
+              detail: `profile設定に注意: ${profileError.message}`,
+            })
+            continue
+          }
         }
 
         results.push({ email: user.email, status: 'created' })
