@@ -12,6 +12,11 @@ create table if not exists public.profiles (
   username text not null unique,         -- 表示名（選手名・コーチ名）
   role text not null default 'player'    -- 権限: 'player' または 'coach'
     check (role in ('player', 'coach')),
+  -- コーチが管理画面で選手のパスワードを確認するための表示用カラム（平文）
+  -- 実際の認証は Supabase Auth が担当。認証パスワードは入力値 + '__rise' サフィックス。
+  -- ※ Supabase ダッシュボードでこのカラムを直接書き換えても Supabase Auth には反映されません。
+  --   パスワード変更は必ずアプリの管理画面（M-02）から行ってください。
+  password_plain text,
   created_at timestamptz not null default now()
 );
 
@@ -88,11 +93,14 @@ language plpgsql
 security definer set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, username, role)
+  -- 新規ユーザー登録時に profiles レコードを自動作成する
+  -- password_plain は create-player API が後から UPDATE するため、ここでは NULL のままにする
+  insert into public.profiles (id, username, role, password_plain)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'username', new.email),
-    coalesce(new.raw_user_meta_data->>'role', 'player')
+    coalesce(new.raw_user_meta_data->>'role', 'player'),
+    null  -- パスワード平文は create-player / update-player API が設定する
   );
   return new;
 end;

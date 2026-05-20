@@ -4,6 +4,7 @@
 // コーチが選手アカウントの作成・名前変更・パスワード変更を行う画面。
 //
 // ※ セキュリティ改善（個別パスワード管理への移行）:
+//   - 画面を開く際に「管理者パスワード認証」を要求（3.2 管理者専用アクセス制御）
 //   - 選手一覧で現在のパスワードを確認できるビューを追加
 //   - 選手の名前（username）を直接変更できる機能を追加
 //   - パスワードを「リセット（初期化）」だけでなく「任意の値に直接変更」できるよう拡張
@@ -11,9 +12,18 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { buildAuthPassword } from '@/lib/constants'
 import { Profile } from '@/lib/types'
 
 export default function AccountsPage() {
+  // ===== 管理者アクセス制御 =====
+  // コーチが自分のパスワードで認証してはじめて管理機能にアクセスできる
+  const [adminVerified, setAdminVerified] = useState(false)
+  const [adminPassword, setAdminPassword] = useState('')
+  const [adminError, setAdminError] = useState('')
+  const [adminLoading, setAdminLoading] = useState(false)
+
+  // ===== 選手一覧 =====
   const [players, setPlayers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -35,8 +45,16 @@ export default function AccountsPage() {
   // 一覧のパスワード表示/非表示の切り替え（全体）
   const [showAllPasswords, setShowAllPasswords] = useState(false)
 
+  // 管理者認証済みになったら選手一覧を読み込む
+  useEffect(() => {
+    if (adminVerified) {
+      fetchPlayers()
+    }
+  }, [adminVerified]) // eslint-disable-line
+
   // 選手一覧取得（password_plain カラムも取得）
   const fetchPlayers = async () => {
+    setLoading(true)
     const supabase = createClient()
     const { data } = await supabase
       .from('profiles')
@@ -47,7 +65,43 @@ export default function AccountsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchPlayers() }, []) // eslint-disable-line
+  // ===== 管理者パスワード認証 =====
+  // コーチが自分のパスワードを入力して認証する
+  // Supabase Auth で現在ログイン中のコーチのメールアドレスを取得し、
+  // 入力されたパスワードで signInWithPassword を試みることで照合する
+  const handleAdminVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAdminLoading(true)
+    setAdminError('')
+
+    const supabase = createClient()
+
+    // 現在ログイン中のコーチのメールアドレスを取得
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) {
+      setAdminError('ログイン情報が取得できませんでした。再ログインしてください。')
+      setAdminLoading(false)
+      return
+    }
+
+    // 入力されたパスワード（パディング付き）で照合を試みる
+    // パディング方式: ユーザー入力値 + PASSWORD_SUFFIX を Supabase Auth に渡す
+    const { error } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: buildAuthPassword(adminPassword),
+    })
+
+    if (error) {
+      setAdminError('パスワードが正しくありません。')
+      setAdminLoading(false)
+      return
+    }
+
+    // 認証成功 — 管理機能を解放する
+    setAdminVerified(true)
+    setAdminPassword('')
+    setAdminLoading(false)
+  }
 
   // 選手アカウント作成（メールアドレスはサーバー側で自動生成）
   const handleCreatePlayer = async (e: React.FormEvent) => {
@@ -140,9 +194,75 @@ export default function AccountsPage() {
     setEditing(false)
   }
 
+  // ===== 管理者認証画面 =====
+  // adminVerified が false の間はこちらを表示
+  if (!adminVerified) {
+    return (
+      <div className="max-w-sm mx-auto px-4 py-10">
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-2">🔐</div>
+          <h1 className="text-xl font-extrabold text-black">管理者認証</h1>
+          <p className="text-sm text-black/70 mt-1">
+            アカウント管理画面にアクセスするには<br />
+            コーチのパスワードを入力してください
+          </p>
+        </div>
+
+        <div
+          className="rounded-2xl p-6 shadow"
+          style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+        >
+          <form onSubmit={handleAdminVerify} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">
+                パスワード
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                required
+                placeholder="コーチのパスワードを入力"
+                autoFocus
+                className="w-full rounded-lg px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 text-sm"
+              />
+            </div>
+
+            {adminError && (
+              <p className="text-red-400 text-sm text-center font-medium">{adminError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={adminLoading}
+              className="w-full py-3 rounded-xl font-bold text-gray-900 text-sm disabled:opacity-60"
+              style={{ backgroundColor: '#e1c614' }}
+            >
+              {adminLoading ? '確認中...' : '認証して管理画面を開く'}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-4 text-xs text-black/50 text-center">
+          ※ コーチ自身のログインパスワードを入力してください
+        </p>
+      </div>
+    )
+  }
+
+  // ===== 管理者認証済み — メインの管理画面 =====
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-extrabold text-black mb-1">👥 アカウント管理</h1>
+      <div className="flex items-center gap-2 mb-1">
+        <h1 className="text-xl font-extrabold text-black">👥 アカウント管理</h1>
+        {/* 認証済みバッジ */}
+        <span
+          className="text-xs px-2 py-0.5 rounded-full font-medium"
+          style={{ backgroundColor: 'rgba(225,198,20,0.3)', color: '#1a1a1a' }}
+        >
+          🔓 認証済み
+        </span>
+      </div>
       <p className="text-sm text-black/70 mb-6">選手の登録・名前変更・パスワード管理</p>
 
       {/* ===== 選手アカウント作成 ===== */}
@@ -169,7 +289,7 @@ export default function AccountsPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 minLength={4}
-                placeholder="例: taro"
+                placeholder="例: taro2024"
                 className="w-full rounded-lg px-3 py-2 bg-white text-gray-800 text-sm focus:outline-none"
               />
             </div>

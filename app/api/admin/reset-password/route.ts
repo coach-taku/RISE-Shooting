@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (newPassword.length < 4) {
-      return NextResponse.json({ error: 'パスワードは4文字以上にしてください' }, { status: 400 })
+      return NextResponse.json({ error: 'パスワードは4文字以上で設定してください' }, { status: 400 })
     }
 
     // Admin クライアントでパスワードリセット
