@@ -4,6 +4,9 @@ export interface Profile {
   id: string
   username: string
   role: 'player' | 'coach'
+  // コーチが管理画面でパスワードを確認するための表示用フィールド
+  // 実際の認証は Supabase Auth が担当。null の場合は未設定。
+  password_plain?: string | null
   created_at: string
 }
 
