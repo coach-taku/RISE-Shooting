@@ -162,14 +162,14 @@ export default function AccountsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-black/80 mb-1">パスワード（6文字以上）</label>
+              <label className="block text-xs text-black/80 mb-1">パスワード（4文字以上）</label>
               <input
                 type="text"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                minLength={6}
-                placeholder="例: taro2024"
+                minLength={4}
+                placeholder="例: taro"
                 className="w-full rounded-lg px-3 py-2 bg-white text-gray-800 text-sm focus:outline-none"
               />
             </div>
@@ -287,8 +287,8 @@ export default function AccountsPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={editPassword}
                     onChange={(e) => setEditPassword(e.target.value)}
-                    minLength={6}
-                    placeholder="6文字以上で入力"
+                    minLength={4}
+                    placeholder="4文字以上で入力"
                     className="w-full rounded-lg px-3 py-2 pr-10 bg-white text-gray-800 text-sm focus:outline-none"
                   />
                   <button

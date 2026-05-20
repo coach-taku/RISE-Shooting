@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '名前またはパスワードのどちらかは必要です' }, { status: 400 })
     }
 
-    if (newPassword && newPassword.length < 6) {
-      return NextResponse.json({ error: 'パスワードは6文字以上にしてください' }, { status: 400 })
+    if (newPassword && newPassword.length < 4) {
+      return NextResponse.json({ error: 'パスワードは4文字以上にしてください' }, { status: 400 })
     }
 
     const adminClient = createAdminClient()

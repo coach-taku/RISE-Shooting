@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'パラメータが不足しています' }, { status: 400 })
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: '合言葉は6文字以上にしてください' }, { status: 400 })
+    if (newPassword.length < 4) {
+      return NextResponse.json({ error: 'パスワードは4文字以上にしてください' }, { status: 400 })
     }
 
     // Admin クライアントでパスワードリセット
