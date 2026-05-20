@@ -4,6 +4,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { getSupabaseUrl } from '@/lib/supabase/url'
 
 // 認証不要でアクセスできるパスの一覧
 const PUBLIC_PATHS = [
@@ -11,6 +12,8 @@ const PUBLIC_PATHS = [
   '/setup',
   '/api/admin/seed-demo-users', // セットアップページから未ログインで呼ぶため除外
   '/api/admin/debug-auth',      // 診断API（ログイン前に状態確認するため除外）
+  '/api/auth/users-list',       // ログイン画面の名前プルダウン取得（ログイン前に呼ぶため除外）
+  '/api/auth/login-by-name',    // 名前→メールアドレス逆引き（ログイン処理の一部なので除外）
 ]
 
 export async function proxy(request: NextRequest) {
@@ -22,7 +25,7 @@ export async function proxy(request: NextRequest) {
     if (pathname === '/login') {
       // ログイン状態確認（ログインページのみ）
       const supabaseCheck = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        getSupabaseUrl(),
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
           cookies: {
@@ -43,7 +46,7 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getSupabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
