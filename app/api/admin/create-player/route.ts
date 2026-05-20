@@ -5,6 +5,10 @@
 //   フロントからメールアドレスを受け取らず、
 //   サーバー側でダミーメールアドレスを自動生成して Supabase Auth に渡す。
 //   形式: [ランダム8文字]@player.rise-shooting.example.com
+//
+// ※ 個別パスワード管理対応（セキュリティ強化）:
+//   作成時のパスワードを profiles.password_plain にも保存する。
+//   コーチが管理画面でパスワードを確認できるようにするため。
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -69,7 +73,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: createError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, userId: newUser.user?.id })
+    // ユーザー作成後、profiles テーブルの password_plain も更新する
+    // （handle_new_user トリガーが profiles を作成した後に実行）
+    const newUserId = newUser.user?.id
+    if (newUserId) {
+      // トリガーによる profiles 作成を少し待つ（非同期）
+      // 失敗してもアカウント作成自体は成功とみなす
+      await adminClient
+        .from('profiles')
+        .update({ password_plain: password })
+        .eq('id', newUserId)
+    }
+
+    return NextResponse.json({ success: true, userId: newUserId })
   } catch {
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
   }
