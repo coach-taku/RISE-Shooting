@@ -5,10 +5,15 @@
 // ※ 個別パスワード管理への移行対応:
 //   パスワードを更新すると Supabase Auth と profiles テーブルの両方が同期される。
 //   また profiles テーブルの password_plain カラムにも平文を保存する（コーチが確認できるように）。
+//
+// ※ パスワードパディング方式:
+//   ユーザーが入力したパスワードに PASSWORD_SUFFIX を付加して Supabase Auth に渡す。
+//   profiles.password_plain にはユーザー入力値（サフィックスなし）を保存する。
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { buildAuthPassword } from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +56,7 @@ export async function POST(request: NextRequest) {
     // --- 1. パスワードを変更する場合: Supabase Auth に反映 ---
     if (newPassword) {
       const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(targetUserId, {
-        password: newPassword,
+        password: buildAuthPassword(newPassword), // パディング付加（Supabaseの6文字制約を回避）
       })
 
       if (authUpdateError) {

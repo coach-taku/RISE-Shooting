@@ -5,10 +5,14 @@
 // ユーザー一覧は DB（profiles テーブル）から動的に取得する。
 // 内部ではサーバー API 経由でダミーメールアドレスを逆引きし、Supabase Auth でログインする。
 // ※ セキュリティ改善: 共通「合言葉」から個別パスワード管理へ移行済み
+// ※ パディング方式: Supabase Auth の最小6文字制限に対応するため、
+//   ユーザー入力値に buildAuthPassword() で固定サフィックスを付加して Supabase に渡す。
+//   選手にはサフィックスは見えない。
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { buildAuthPassword } from '@/lib/constants'
 
 // DB から取得するユーザー情報の型
 interface UserEntry {
@@ -93,10 +97,11 @@ export default function LoginPage() {
     }
 
     // 取得したダミーメールアドレスとパスワードで Supabase Auth にログイン
+    // パディング: ユーザー入力値に固定サフィックスを付加して Supabase の最小6文字制限を満たす
     const supabase = createClient()
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
-      password,
+      password: buildAuthPassword(password),
     })
 
     if (authError) {
