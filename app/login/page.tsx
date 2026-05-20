@@ -1,9 +1,10 @@
 'use client'
 
 // P-01: ログイン画面
-// 名前をプルダウンで選択し、合言葉（パスワード）を入力してログインする。
+// 名前をプルダウンで選択し、パスワードを入力してログインする。
 // ユーザー一覧は DB（profiles テーブル）から動的に取得する。
 // 内部ではサーバー API 経由でダミーメールアドレスを逆引きし、Supabase Auth でログインする。
+// ※ セキュリティ改善: 共通「合言葉」から個別パスワード管理へ移行済み
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -99,7 +100,7 @@ export default function LoginPage() {
     })
 
     if (authError) {
-      setError('名前または合言葉が正しくありません。')
+      setError('名前またはパスワードが正しくありません。')
       setLoading(false)
       return
     }
@@ -174,17 +175,17 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* パスワード（合言葉） */}
+          {/* パスワード */}
           <div>
             <label className="block text-sm font-medium text-black mb-1">
-              合言葉（パスワード）
+              パスワード
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="合言葉を入力"
+              placeholder="パスワードを入力"
               className="w-full rounded-lg px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 text-sm"
             />
           </div>

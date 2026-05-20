@@ -1,5 +1,8 @@
 // コーチ用：選手パスワードリセット API ルート
 // Service Role Key を使用するため、サーバーサイドのみで実行
+//
+// ※ 個別パスワード管理対応（セキュリティ強化）:
+//   パスワード変更時に profiles.password_plain も同期更新する。
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -46,6 +49,13 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: 'パスワードのリセットに失敗しました' }, { status: 500 })
     }
+
+    // profiles テーブルの password_plain も同期更新する
+    // コーチが管理画面でパスワードを確認できるようにするため
+    await adminClient
+      .from('profiles')
+      .update({ password_plain: newPassword })
+      .eq('id', targetUserId)
 
     return NextResponse.json({ success: true })
   } catch {
