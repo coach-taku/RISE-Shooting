@@ -109,10 +109,14 @@ export default function StatsPage() {
 
   const threePointRecords = records.filter((r) => r.area_name.startsWith('3P_'))
   const twoPointRecords = records.filter((r) => r.area_name.startsWith('2P_'))
+  // FT（フリースロー）の集計
+  const ftRecords = records.filter((r) => r.area_name.startsWith('FT_'))
   const threePAttempts = threePointRecords.reduce((s, r) => s + r.attempts, 0)
   const threePSuccess = threePointRecords.reduce((s, r) => s + r.successes, 0)
   const twoPAttempts = twoPointRecords.reduce((s, r) => s + r.attempts, 0)
   const twoPSuccess = twoPointRecords.reduce((s, r) => s + r.successes, 0)
+  const ftAttempts = ftRecords.reduce((s, r) => s + r.attempts, 0)
+  const ftSuccess = ftRecords.reduce((s, r) => s + r.successes, 0)
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
@@ -169,11 +173,26 @@ export default function StatsPage() {
       </div>
 
       {/* サマリーカード */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         {[
           { label: 'FG%', value: `${overallPct}%`, sub: `${totalSuccesses}/${totalAttempts}` },
           { label: '3P%', value: threePAttempts > 0 ? `${((threePSuccess / threePAttempts) * 100).toFixed(1)}%` : '-', sub: `${threePSuccess}/${threePAttempts}` },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl p-3 text-center"
+            style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+          >
+            <p className="text-xs text-black/70">{item.label}</p>
+            <p className="text-xl font-extrabold" style={{ color: '#1e3a8a' }}>{item.value}</p>
+            <p className="text-xs text-black/60">{item.sub}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {[
           { label: '2P%', value: twoPAttempts > 0 ? `${((twoPSuccess / twoPAttempts) * 100).toFixed(1)}%` : '-', sub: `${twoPSuccess}/${twoPAttempts}` },
+          { label: 'FT%', value: ftAttempts > 0 ? `${((ftSuccess / ftAttempts) * 100).toFixed(1)}%` : '-', sub: `${ftSuccess}/${ftAttempts}` },
         ].map((item) => (
           <div
             key={item.label}
