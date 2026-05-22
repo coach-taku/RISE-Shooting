@@ -114,6 +114,11 @@ export default function LoginPage() {
         .eq('id', user.id)
         .single()
 
+      // router.refresh() でサーバー側のセッション状態をクライアントに同期する。
+      // これにより、proxy.ts が書き出した Cookie をサーバーコンポーネントが
+      // 正しく認識し、ログイン状態が確実に維持される。
+      router.refresh()
+
       if (profile?.role === 'coach') {
         router.push('/coach/dashboard')
       } else {
