@@ -34,6 +34,11 @@ function findZone(zoneData: ZoneData[], zone: string): ZoneData | undefined {
   return zoneData.find((z) => z.area_name === area.value)
 }
 
+// FT（フリースロー）データを取得
+function findFTZone(zoneData: ZoneData[]): ZoneData | undefined {
+  return zoneData.find((z) => z.area_name === 'FT_フリースロー')
+}
+
 export default function ShotChart({ zoneData }: ShotChartProps) {
   const getZoneInfo = (zone: string) => {
     const data = findZone(zoneData, zone)
@@ -44,6 +49,13 @@ export default function ShotChart({ zoneData }: ShotChartProps) {
       made:  hasData ? `${data!.successes}/${data!.attempts}` : '',
     }
   }
+
+  // FTデータ
+  const ftData = findFTZone(zoneData)
+  const ftHasData = !!ftData && ftData.attempts > 0
+  const ftColor = getZoneColor(ftData?.percentage ?? 0, ftHasData)
+  const ftPct = ftHasData ? `${ftData!.percentage.toFixed(0)}%` : '-'
+  const ftMade = ftHasData ? `${ftData!.successes}/${ftData!.attempts}` : ''
 
   const z = {
     corner_left:        getZoneInfo('corner_left'),
@@ -324,6 +336,30 @@ export default function ShotChart({ zoneData }: ShotChartProps) {
         <circle cx="132" cy="236" r="3" fill="rgba(239,68,68,0.75)"/>
         <text x="137" y="239" fontSize="4.5" fill="rgba(255,255,255,0.5)">0-29%</text>
       </svg>
+
+      {/* ── フリースロー（FT）スタッツ表示 ──
+          コート図にはFTラインが既に描画されているが、
+          FTは特定のコートゾーンではなくラインで打つため、
+          チャート下部に専用カードとして表示する */}
+      <div
+        className="mt-2 rounded-xl px-4 py-3 flex items-center gap-3"
+        style={{ backgroundColor: ftHasData ? ftColor : 'rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex-1">
+          <p className="text-xs font-bold" style={{ color: ftHasData ? '#1a1a1a' : 'rgba(255,255,255,0.5)' }}>
+            🎯 フリースロー（FT）
+          </p>
+          {ftHasData && (
+            <p className="text-xs" style={{ color: 'rgba(0,0,0,0.6)' }}>{ftMade}本</p>
+          )}
+        </div>
+        <span
+          className="text-2xl font-extrabold"
+          style={{ color: ftHasData ? '#1a1a1a' : 'rgba(255,255,255,0.3)' }}
+        >
+          {ftPct}
+        </span>
+      </div>
     </div>
   )
 }
