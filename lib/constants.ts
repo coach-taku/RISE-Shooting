@@ -17,6 +17,8 @@ export const SHOT_AREAS = [
   // 2ポイント インサイド（2分割）
   { value: '2P_ペイント中央', label: 'ペイントエリア中央', category: '2P_inside', zone: 'paint_center' },
   { value: '2P_ゴール下', label: 'ゴール下', category: '2P_inside', zone: 'under_goal' },
+  // フリースロー（FT）
+  { value: 'FT_フリースロー', label: 'フリースロー（FT）', category: 'FT', zone: 'free_throw' },
 ] as const
 
 export type ShotAreaValue = typeof SHOT_AREAS[number]['value']
@@ -26,6 +28,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   '3P': '3ポイント',
   '2P_mid': '2Pミドルレンジ',
   '2P_inside': '2Pインサイド',
+  'FT': 'フリースロー',
 }
 
 // 登録成功時のポジティブメッセージ一覧
