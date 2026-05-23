@@ -5,12 +5,14 @@
 // v6: インラインカレンダーUIを追加。過去・未来の制限なし。既存データの読み込みに対応。
 // v7: バグ修正 — 最大10セット制限・入力の独立化・空セットのフィルタリング・SW エラー解消
 // v8: 過去データの修正・削除機能を追加 — 既存データ読み込み時に修正・削除ボタンを表示
+// v9: 1日の入力セット数を無制限化 — 既存データがある日でも新規追加（追記）が可能に。
+//     「修正モード」を廃止し、「既存データ確認 + 追記フォーム」の2パネル構成に変更。
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SHOT_AREAS, SUCCESS_MESSAGES, CATEGORY_LABELS } from '@/lib/constants'
 
-// 最大セット数
+// 1回の送信で追加できる最大セット数（UI制限）
 const MAX_ENTRIES = 10
 
 // 1エントリ（1エリア分）の型
@@ -21,7 +23,7 @@ interface ShotEntry {
   successes: string   // 入力中は文字列で扱う
 }
 
-// データベース上の既存レコードの型（修正・削除に record_id が必要）
+// データベース上の既存レコードの型
 interface ExistingRecord {
   record_id: number
   area_name: string
@@ -291,14 +293,14 @@ export default function RecordPage() {
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
   const [error, setError] = useState('')
-  // 選択した日に既存データがあるかどうかのメッセージ
-  const [existingInfo, setExistingInfo] = useState('')
 
-  // ========== v8: 修正・削除機能のための State ==========
-  // 既存データが読み込まれているかどうか（修正モードかどうかの判定に使う）
-  const [isEditMode, setIsEditMode] = useState(false)
-  // 既存レコードのID一覧（修正時の削除→再insert、削除時に使用）
-  const [existingRecordIds, setExistingRecordIds] = useState<number[]>([])
+  // ========== v9: 既存データ管理のための State ==========
+  // 選択した日に既存レコードが存在するかどうか
+  const [hasExistingData, setHasExistingData] = useState(false)
+  // 既存レコードの一覧（画面表示 + 修正・削除で使用）
+  const [existingRecords, setExistingRecords] = useState<ExistingRecord[]>([])
+  // 既存データパネルを展開して表示するかどうか
+  const [showExistingRecords, setShowExistingRecords] = useState(false)
   // 削除確認モーダルの表示フラグ
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   // 削除・修正の処理中フラグ
@@ -314,14 +316,14 @@ export default function RecordPage() {
     {}
   )
 
-  // 日付が変わったとき、その日の既存データを取得してフォームに反映する
+  // 日付が変わったとき、その日の既存データを取得する
+  // v9: 既存データが見つかっても「修正モード」には切り替えず、追記フォームを常に表示する
   const fetchExistingData = useCallback(async (targetDate: string) => {
     setLoadingExisting(true)
-    setExistingInfo('')
     setError('')
-    // モードをリセット
-    setIsEditMode(false)
-    setExistingRecordIds([])
+    setHasExistingData(false)
+    setExistingRecords([])
+    setShowExistingRecords(false)
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -330,7 +332,6 @@ export default function RecordPage() {
       return
     }
 
-    // v8: id（record_id）も取得して修正・削除時に使用できるようにする
     const { data, error: fetchError } = await supabase
       .from('shooting_records')
       .select('id, area_name, successes, attempts')
@@ -347,26 +348,23 @@ export default function RecordPage() {
     }
 
     if (data && data.length > 0) {
-      // 既存データが見つかった場合：フォームに読み込む
-      // 最大10セットに制限してフォームへ反映（各エントリに一意IDを付与）
-      const loaded = data.slice(0, MAX_ENTRIES).map((r) => ({
-        id: generateId(),
-        area_name: r.area_name,
-        successes: String(r.successes),
-      }))
-      setEntries(loaded)
-      // v8: 既存レコードのIDを保持（修正・削除で使用）
-      setExistingRecordIds(data.map((r) => r.id))
-      setIsEditMode(true)
-      setExistingInfo(
-        `📋 ${formatDateJP(targetDate)} には ${data.length} 件の記録があります。修正または削除できます。`
+      // 既存データが見つかった場合：件数を通知し、追記フォームはリセット
+      setHasExistingData(true)
+      setExistingRecords(
+        data.map((r) => ({
+          record_id: r.id,
+          area_name: r.area_name,
+          successes: r.successes,
+          attempts: r.attempts,
+        }))
       )
+      // 追記フォームは空の状態でスタート（1日の制限なし = 何度でも追記可能）
+      setEntries([emptyEntry()])
     } else {
       // 既存データなし：フォームをリセット（1枠から開始）
       setEntries([emptyEntry()])
-      setIsEditMode(false)
-      setExistingRecordIds([])
-      setExistingInfo('')
+      setHasExistingData(false)
+      setExistingRecords([])
     }
   }, [])
 
@@ -386,7 +384,7 @@ export default function RecordPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // エントリを追加（最大10セットまで）
+  // エントリを追加（1回の送信は最大10セットまで）
   const addEntry = () => {
     if (entries.length < MAX_ENTRIES) {
       // スプレッドで新しい配列を生成し、新しいエントリを末尾に追加
@@ -411,85 +409,7 @@ export default function RecordPage() {
   }
 
   // =====================================================
-  // v8: 過去データの修正（上書き更新）処理
-  // 既存レコードを削除してから新しいデータを insert する
-  // =====================================================
-  const handleUpdate = async () => {
-    setError('')
-    setSuccessMsg('')
-    setActionLoading(true)
-
-    // 入力済みのエントリのみを抽出
-    const filledEntries = entries.filter(
-      (entry) => entry.area_name !== '' && entry.successes !== ''
-    )
-
-    if (filledEntries.length === 0) {
-      setError('少なくとも1つのエリアと成功数を入力してください。')
-      setActionLoading(false)
-      return
-    }
-
-    // バリデーション
-    for (const entry of filledEntries) {
-      const suc = parseInt(entry.successes)
-      if (isNaN(suc) || suc < 0 || suc > 10) {
-        setError('成功数は0〜10の範囲で入力してください。')
-        setActionLoading(false)
-        return
-      }
-    }
-
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setError('ログインが必要です。')
-      setActionLoading(false)
-      return
-    }
-
-    // Step 1: 既存レコードを削除（record_id で特定）
-    if (existingRecordIds.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('shooting_records')
-        .delete()
-        .in('id', existingRecordIds)
-
-      if (deleteError) {
-        setError('データの更新に失敗しました。もう一度お試しください。')
-        setActionLoading(false)
-        return
-      }
-    }
-
-    // Step 2: 新しいデータを insert
-    const records = filledEntries.map((entry) => ({
-      user_id: user.id,
-      date,
-      area_name: entry.area_name,
-      attempts: 10,
-      successes: parseInt(entry.successes),
-    }))
-
-    const { error: insertError } = await supabase
-      .from('shooting_records')
-      .insert(records)
-
-    if (insertError) {
-      setError('データの保存に失敗しました。もう一度お試しください。')
-      setActionLoading(false)
-      return
-    }
-
-    setSuccessMsg(`✅ ${formatDateJP(date)} のデータを更新しました！`)
-    setActionLoading(false)
-
-    // 更新後、その日のデータを再取得して最新状態を反映
-    fetchExistingData(date)
-  }
-
-  // =====================================================
-  // v8: 過去データの削除処理
+  // v8 継続: 過去データの全削除処理
   // 削除確認モーダルで「削除する」が押されたときに呼ばれる
   // =====================================================
   const handleDelete = async () => {
@@ -507,10 +427,11 @@ export default function RecordPage() {
     }
 
     // 既存レコードを record_id で特定して削除
+    const recordIds = existingRecords.map((r) => r.record_id)
     const { error: deleteError } = await supabase
       .from('shooting_records')
       .delete()
-      .in('id', existingRecordIds)
+      .in('id', recordIds)
 
     if (deleteError) {
       setError('削除に失敗しました。もう一度お試しください。')
@@ -518,16 +439,20 @@ export default function RecordPage() {
       return
     }
 
-    // 削除完了 → フォームをリセット・モードを解除
+    // 削除完了 → フォームをリセット・既存データを解除
     setSuccessMsg(`🗑️ ${formatDateJP(date)} のデータを削除しました。`)
     setEntries([emptyEntry()])
-    setIsEditMode(false)
-    setExistingRecordIds([])
-    setExistingInfo('')
+    setHasExistingData(false)
+    setExistingRecords([])
+    setShowExistingRecords(false)
     setActionLoading(false)
   }
 
-  // 送信処理（選択した日付のデータとして insert）
+  // =====================================================
+  // 新規追加（追記）処理
+  // v9: 1日の制限なし — 既存データの有無にかかわらず insert を実行する
+  //     1回の送信に含めるセット数は最大10セットまで（UI制限）
+  // =====================================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -565,6 +490,7 @@ export default function RecordPage() {
     }
 
     // 選択した日付でレコードを insert（入力済みのエントリのみ、空の枠は除外）
+    // v9: 同日に既にデータが存在していても制限なく追記可能
     const records = filledEntries.map((entry) => ({
       user_id: user.id,
       date,                              // カレンダーで選択した日付を使用
@@ -587,10 +513,9 @@ export default function RecordPage() {
     const msg = SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)]
     setSuccessMsg(msg)
     setEntries([emptyEntry()])
-    setExistingInfo('')
     setLoading(false)
 
-    // 保存後、その日のデータを再取得して最新状態を反映
+    // 保存後、その日のデータを再取得して既存データ表示を最新状態に更新
     fetchExistingData(date)
   }
 
@@ -625,7 +550,7 @@ export default function RecordPage() {
           <InlineCalendar selected={date} onChange={handleDateChange} />
         </div>
 
-        {/* 既存データのお知らせ */}
+        {/* 既存データの読み込み中インジケーター */}
         {loadingExisting && (
           <div
             className="rounded-xl p-3 text-sm text-black/70 text-center"
@@ -634,12 +559,72 @@ export default function RecordPage() {
             データを確認中...
           </div>
         )}
-        {!loadingExisting && existingInfo && (
+
+        {/* =====================================================
+            v9: 既存データパネル
+            既存データが存在する日に表示。削除ボタンも含む。
+            折りたたみ可能で、詳細一覧と削除機能を提供する。
+            ===================================================== */}
+        {!loadingExisting && hasExistingData && (
           <div
-            className="rounded-xl p-3 text-sm text-black font-medium"
-            style={{ backgroundColor: 'rgba(225,198,20,0.25)', border: '1px solid rgba(225,198,20,0.6)' }}
+            className="rounded-xl p-4"
+            style={{ backgroundColor: 'rgba(225,198,20,0.2)', border: '1px solid rgba(225,198,20,0.5)' }}
           >
-            {existingInfo}
+            {/* ヘッダー行：件数と展開ボタン */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-black">
+                📋 この日には {existingRecords.length} 件の記録があります
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowExistingRecords(!showExistingRecords)}
+                className="text-xs font-bold text-black/70 underline"
+              >
+                {showExistingRecords ? '閉じる' : '一覧を見る'}
+              </button>
+            </div>
+
+            {/* 既存データ一覧（展開時のみ表示） */}
+            {showExistingRecords && (
+              <div className="mt-3 space-y-1">
+                {existingRecords.map((rec, idx) => (
+                  <div
+                    key={rec.record_id}
+                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.4)' }}
+                  >
+                    <span className="text-black/70 text-xs mr-2">{idx + 1}.</span>
+                    <span className="flex-1 text-black font-medium text-xs">{rec.area_name}</span>
+                    <span className="text-black font-bold text-xs">
+                      {rec.successes} / {rec.attempts} 本
+                    </span>
+                  </div>
+                ))}
+
+                {/* 全削除ボタン */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(true)}
+                    disabled={actionLoading}
+                    className="w-full py-2 rounded-xl font-bold text-white text-sm transition-all duration-200 disabled:opacity-60"
+                    style={{ backgroundColor: 'rgba(220,50,50,0.85)' }}
+                  >
+                    {actionLoading ? '処理中...' : `🗑️ ${formatDateJP(date)} の記録をすべて削除`}
+                  </button>
+                  <p className="text-xs text-black/50 text-center mt-1">
+                    ※ 削除後は新規入力フォームから再入力できます
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 追記を促すメッセージ */}
+            {!showExistingRecords && (
+              <p className="text-xs text-black/60 mt-1">
+                下のフォームから新しいセットを追記できます（1日の記録に制限はありません）
+              </p>
+            )}
           </div>
         )}
 
@@ -710,14 +695,14 @@ export default function RecordPage() {
           </div>
         ))}
 
-        {/* エリア追加ボタン（最大10セットまで） */}
+        {/* エリア追加ボタン（1回の送信は最大10セットまで） */}
         {entries.length < MAX_ENTRIES && (
           <button
             type="button"
             onClick={addEntry}
             className="w-full py-3 rounded-xl border-2 border-dashed text-black/70 hover:text-black hover:border-black transition-colors text-sm font-medium"
           >
-            ＋ エリアを追加（最大{MAX_ENTRIES}エリア）
+            ＋ エリアを追加（1回最大{MAX_ENTRIES}エリア）
           </button>
         )}
 
@@ -727,50 +712,28 @@ export default function RecordPage() {
         )}
 
         {/* =====================================================
-            v8: 修正モード（既存データあり）と新規登録モードで
-            表示するボタンを切り替える
+            v9: 登録ボタン
+            既存データの有無にかかわらず常に「追記（新規登録）」ボタンを表示する。
+            1日の合計セット数制限なし。1回の送信は最大10セットまで。
             ===================================================== */}
-        {isEditMode ? (
-          /* 修正モード：「修正して保存」と「削除」ボタンを表示 */
-          <div className="space-y-3">
-            {/* 修正して保存ボタン */}
-            <button
-              type="button"
-              onClick={handleUpdate}
-              disabled={actionLoading}
-              className="w-full py-4 rounded-2xl font-extrabold text-gray-900 text-lg transition-all duration-200 disabled:opacity-60 shadow-lg"
-              style={{ backgroundColor: '#e1c614' }}
-            >
-              {actionLoading ? '処理中...' : `💾 ${formatDateJP(date)} のデータを修正・保存`}
-            </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-4 rounded-2xl font-extrabold text-gray-900 text-lg transition-all duration-200 disabled:opacity-60 shadow-lg"
+          style={{ backgroundColor: '#e1c614' }}
+        >
+          {loading
+            ? '登録中...'
+            : hasExistingData
+            ? `🏀 ${formatDateJP(date)} に追記する！`
+            : `🏀 ${formatDateJP(date)} の記録を登録！`}
+        </button>
 
-            {/* 削除ボタン */}
-            <button
-              type="button"
-              onClick={() => setShowDeleteModal(true)}
-              disabled={actionLoading}
-              className="w-full py-3 rounded-2xl font-bold text-white text-base transition-all duration-200 disabled:opacity-60 shadow"
-              style={{ backgroundColor: 'rgba(220,50,50,0.85)' }}
-            >
-              {actionLoading ? '処理中...' : `🗑️ ${formatDateJP(date)} のデータを削除`}
-            </button>
-
-            {/* 新規追加モードに切り替えるリンク */}
-            <p className="text-center text-xs text-black/50">
-              ※ 既存データを修正する場合は上の「修正・保存」ボタンを押してください。<br />
-              この日に新たに記録を追記したい場合は、下のエリア追加ボタンで行を追加して修正・保存してください。
-            </p>
-          </div>
-        ) : (
-          /* 新規登録モード：「記録を登録」ボタンを表示 */
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 rounded-2xl font-extrabold text-gray-900 text-lg transition-all duration-200 disabled:opacity-60 shadow-lg"
-            style={{ backgroundColor: '#e1c614' }}
-          >
-            {loading ? '登録中...' : `🏀 ${formatDateJP(date)} の記録を登録！`}
-          </button>
+        {/* 1日無制限の説明テキスト */}
+        {hasExistingData && (
+          <p className="text-center text-xs text-black/50">
+            ※ 1日に何度でも追記できます（1回の送信は最大{MAX_ENTRIES}セットまで）
+          </p>
         )}
       </form>
     </div>
