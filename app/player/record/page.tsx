@@ -4,6 +4,7 @@
 // 選手が任意の日付を選択し、その日の記録としてシュート結果を入力する
 // v6: インラインカレンダーUIを追加。過去・未来の制限なし。既存データの読み込みに対応。
 // v7: バグ修正 — 最大10セット制限・入力の独立化・空セットのフィルタリング・SW エラー解消
+// v8: 過去データの修正・削除機能を追加 — 既存データ読み込み時に修正・削除ボタンを表示
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +19,14 @@ interface ShotEntry {
   id: string          // 一意のID（入力連動バグ防止のため必須）
   area_name: string
   successes: string   // 入力中は文字列で扱う
+}
+
+// データベース上の既存レコードの型（修正・削除に record_id が必要）
+interface ExistingRecord {
+  record_id: number
+  area_name: string
+  successes: number
+  attempts: number
 }
 
 // 一意IDを生成する関数（crypto.randomUUID が使えない環境向けのフォールバック付き）
@@ -210,6 +219,66 @@ function InlineCalendar({
   )
 }
 
+// =====================================================
+// 削除確認モーダルコンポーネント
+// =====================================================
+function DeleteConfirmModal({
+  date,
+  onConfirm,
+  onCancel,
+}: {
+  date: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+        style={{ backgroundColor: '#f5f5f0' }}
+      >
+        {/* アイコン */}
+        <div className="text-center mb-4">
+          <span className="text-4xl">🗑️</span>
+        </div>
+        {/* タイトル */}
+        <h2 className="text-center text-lg font-extrabold text-gray-900 mb-2">
+          データを削除しますか？
+        </h2>
+        {/* 説明 */}
+        <p className="text-center text-sm text-gray-600 mb-6">
+          <span className="font-bold text-gray-900">{formatDateJP(date)}</span>{' '}
+          のシュート記録をすべて削除します。
+          <br />
+          <span className="text-red-500 font-bold">この操作は元に戻せません。</span>
+        </p>
+        {/* ボタン */}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl font-bold text-gray-700 transition-colors"
+            style={{ backgroundColor: '#e0e0e0' }}
+          >
+            キャンセル
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 py-3 rounded-xl font-bold text-white transition-colors"
+            style={{ backgroundColor: '#e55' }}
+          >
+            削除する
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function RecordPage() {
   const today = new Date().toISOString().split('T')[0]
   const [date, setDate] = useState(today)
@@ -224,6 +293,16 @@ export default function RecordPage() {
   const [error, setError] = useState('')
   // 選択した日に既存データがあるかどうかのメッセージ
   const [existingInfo, setExistingInfo] = useState('')
+
+  // ========== v8: 修正・削除機能のための State ==========
+  // 既存データが読み込まれているかどうか（修正モードかどうかの判定に使う）
+  const [isEditMode, setIsEditMode] = useState(false)
+  // 既存レコードのID一覧（修正時の削除→再insert、削除時に使用）
+  const [existingRecordIds, setExistingRecordIds] = useState<number[]>([])
+  // 削除確認モーダルの表示フラグ
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  // 削除・修正の処理中フラグ
+  const [actionLoading, setActionLoading] = useState(false)
 
   // エリアをカテゴリ別にグループ化（レンダリング前に計算）
   const areasByCategory = SHOT_AREAS.reduce<Record<string, typeof SHOT_AREAS[number][]>>(
@@ -240,6 +319,9 @@ export default function RecordPage() {
     setLoadingExisting(true)
     setExistingInfo('')
     setError('')
+    // モードをリセット
+    setIsEditMode(false)
+    setExistingRecordIds([])
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -248,9 +330,10 @@ export default function RecordPage() {
       return
     }
 
+    // v8: id（record_id）も取得して修正・削除時に使用できるようにする
     const { data, error: fetchError } = await supabase
       .from('shooting_records')
-      .select('area_name, successes, attempts')
+      .select('id, area_name, successes, attempts')
       .eq('user_id', user.id)
       .eq('date', targetDate)
       .order('id', { ascending: true })
@@ -272,12 +355,17 @@ export default function RecordPage() {
         successes: String(r.successes),
       }))
       setEntries(loaded)
+      // v8: 既存レコードのIDを保持（修正・削除で使用）
+      setExistingRecordIds(data.map((r) => r.id))
+      setIsEditMode(true)
       setExistingInfo(
-        `📋 ${formatDateJP(targetDate)} には ${data.length} 件の記録があります。内容を確認・追記できます。`
+        `📋 ${formatDateJP(targetDate)} には ${data.length} 件の記録があります。修正または削除できます。`
       )
     } else {
       // 既存データなし：フォームをリセット（1枠から開始）
       setEntries([emptyEntry()])
+      setIsEditMode(false)
+      setExistingRecordIds([])
       setExistingInfo('')
     }
   }, [])
@@ -320,6 +408,123 @@ export default function RecordPage() {
         entry.id === id ? { ...entry, [field]: value } : entry
       )
     )
+  }
+
+  // =====================================================
+  // v8: 過去データの修正（上書き更新）処理
+  // 既存レコードを削除してから新しいデータを insert する
+  // =====================================================
+  const handleUpdate = async () => {
+    setError('')
+    setSuccessMsg('')
+    setActionLoading(true)
+
+    // 入力済みのエントリのみを抽出
+    const filledEntries = entries.filter(
+      (entry) => entry.area_name !== '' && entry.successes !== ''
+    )
+
+    if (filledEntries.length === 0) {
+      setError('少なくとも1つのエリアと成功数を入力してください。')
+      setActionLoading(false)
+      return
+    }
+
+    // バリデーション
+    for (const entry of filledEntries) {
+      const suc = parseInt(entry.successes)
+      if (isNaN(suc) || suc < 0 || suc > 10) {
+        setError('成功数は0〜10の範囲で入力してください。')
+        setActionLoading(false)
+        return
+      }
+    }
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError('ログインが必要です。')
+      setActionLoading(false)
+      return
+    }
+
+    // Step 1: 既存レコードを削除（record_id で特定）
+    if (existingRecordIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('shooting_records')
+        .delete()
+        .in('id', existingRecordIds)
+
+      if (deleteError) {
+        setError('データの更新に失敗しました。もう一度お試しください。')
+        setActionLoading(false)
+        return
+      }
+    }
+
+    // Step 2: 新しいデータを insert
+    const records = filledEntries.map((entry) => ({
+      user_id: user.id,
+      date,
+      area_name: entry.area_name,
+      attempts: 10,
+      successes: parseInt(entry.successes),
+    }))
+
+    const { error: insertError } = await supabase
+      .from('shooting_records')
+      .insert(records)
+
+    if (insertError) {
+      setError('データの保存に失敗しました。もう一度お試しください。')
+      setActionLoading(false)
+      return
+    }
+
+    setSuccessMsg(`✅ ${formatDateJP(date)} のデータを更新しました！`)
+    setActionLoading(false)
+
+    // 更新後、その日のデータを再取得して最新状態を反映
+    fetchExistingData(date)
+  }
+
+  // =====================================================
+  // v8: 過去データの削除処理
+  // 削除確認モーダルで「削除する」が押されたときに呼ばれる
+  // =====================================================
+  const handleDelete = async () => {
+    setShowDeleteModal(false)
+    setError('')
+    setSuccessMsg('')
+    setActionLoading(true)
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError('ログインが必要です。')
+      setActionLoading(false)
+      return
+    }
+
+    // 既存レコードを record_id で特定して削除
+    const { error: deleteError } = await supabase
+      .from('shooting_records')
+      .delete()
+      .in('id', existingRecordIds)
+
+    if (deleteError) {
+      setError('削除に失敗しました。もう一度お試しください。')
+      setActionLoading(false)
+      return
+    }
+
+    // 削除完了 → フォームをリセット・モードを解除
+    setSuccessMsg(`🗑️ ${formatDateJP(date)} のデータを削除しました。`)
+    setEntries([emptyEntry()])
+    setIsEditMode(false)
+    setExistingRecordIds([])
+    setExistingInfo('')
+    setActionLoading(false)
   }
 
   // 送信処理（選択した日付のデータとして insert）
@@ -397,11 +602,20 @@ export default function RecordPage() {
       {/* 成功メッセージ */}
       {successMsg && (
         <div
-          className="mb-4 p-4 rounded-2xl text-center font-bold text-gray-900 shadow-lg animate-bounce"
+          className="mb-4 p-4 rounded-2xl text-center font-bold text-gray-900 shadow-lg"
           style={{ backgroundColor: '#e1c614' }}
         >
           {successMsg}
         </div>
+      )}
+
+      {/* 削除確認モーダル */}
+      {showDeleteModal && (
+        <DeleteConfirmModal
+          date={date}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -512,15 +726,52 @@ export default function RecordPage() {
           <p className="text-red-300 text-sm text-center">{error}</p>
         )}
 
-        {/* 送信ボタン */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-4 rounded-2xl font-extrabold text-gray-900 text-lg transition-all duration-200 disabled:opacity-60 shadow-lg"
-          style={{ backgroundColor: '#e1c614' }}
-        >
-          {loading ? '登録中...' : `🏀 ${formatDateJP(date)} の記録を登録！`}
-        </button>
+        {/* =====================================================
+            v8: 修正モード（既存データあり）と新規登録モードで
+            表示するボタンを切り替える
+            ===================================================== */}
+        {isEditMode ? (
+          /* 修正モード：「修正して保存」と「削除」ボタンを表示 */
+          <div className="space-y-3">
+            {/* 修正して保存ボタン */}
+            <button
+              type="button"
+              onClick={handleUpdate}
+              disabled={actionLoading}
+              className="w-full py-4 rounded-2xl font-extrabold text-gray-900 text-lg transition-all duration-200 disabled:opacity-60 shadow-lg"
+              style={{ backgroundColor: '#e1c614' }}
+            >
+              {actionLoading ? '処理中...' : `💾 ${formatDateJP(date)} のデータを修正・保存`}
+            </button>
+
+            {/* 削除ボタン */}
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={actionLoading}
+              className="w-full py-3 rounded-2xl font-bold text-white text-base transition-all duration-200 disabled:opacity-60 shadow"
+              style={{ backgroundColor: 'rgba(220,50,50,0.85)' }}
+            >
+              {actionLoading ? '処理中...' : `🗑️ ${formatDateJP(date)} のデータを削除`}
+            </button>
+
+            {/* 新規追加モードに切り替えるリンク */}
+            <p className="text-center text-xs text-black/50">
+              ※ 既存データを修正する場合は上の「修正・保存」ボタンを押してください。<br />
+              この日に新たに記録を追記したい場合は、下のエリア追加ボタンで行を追加して修正・保存してください。
+            </p>
+          </div>
+        ) : (
+          /* 新規登録モード：「記録を登録」ボタンを表示 */
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 rounded-2xl font-extrabold text-gray-900 text-lg transition-all duration-200 disabled:opacity-60 shadow-lg"
+            style={{ backgroundColor: '#e1c614' }}
+          >
+            {loading ? '登録中...' : `🏀 ${formatDateJP(date)} の記録を登録！`}
+          </button>
+        )}
       </form>
     </div>
   )
