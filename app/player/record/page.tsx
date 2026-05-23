@@ -3,18 +3,37 @@
 // P-02: シューティング記録入力画面
 // 選手が任意の日付を選択し、その日の記録としてシュート結果を入力する
 // v6: インラインカレンダーUIを追加。過去・未来の制限なし。既存データの読み込みに対応。
+// v7: バグ修正 — 最大10セット制限・入力の独立化・空セットのフィルタリング・SW エラー解消
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SHOT_AREAS, SUCCESS_MESSAGES, CATEGORY_LABELS } from '@/lib/constants'
 
+// 最大セット数
+const MAX_ENTRIES = 10
+
 // 1エントリ（1エリア分）の型
+// id を持たせることで各セットを一意に識別し、入力の連動バグを防ぐ
 interface ShotEntry {
+  id: string          // 一意のID（入力連動バグ防止のため必須）
   area_name: string
-  successes: string // 入力中は文字列で扱う
+  successes: string   // 入力中は文字列で扱う
 }
 
-const emptyEntry = (): ShotEntry => ({ area_name: '', successes: '' })
+// 一意IDを生成する関数（crypto.randomUUID が使えない環境向けのフォールバック付き）
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+// 空のエントリを新規作成する（毎回新しいIDを付与）
+const emptyEntry = (): ShotEntry => ({
+  id: generateId(),
+  area_name: '',
+  successes: '',
+})
 
 // 日付文字列から表示用テキストに変換（例: 2026-05-23 → 2026年5月23日）
 function formatDateJP(dateStr: string): string {
@@ -194,7 +213,11 @@ function InlineCalendar({
 export default function RecordPage() {
   const today = new Date().toISOString().split('T')[0]
   const [date, setDate] = useState(today)
+
+  // エントリ配列：各要素に一意の id を付与して入力の独立性を保証する
+  // key={entry.id} を使用することで、index ベースの key による入力連動バグを防ぐ
   const [entries, setEntries] = useState<ShotEntry[]>([emptyEntry()])
+
   const [loading, setLoading] = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
@@ -242,17 +265,18 @@ export default function RecordPage() {
 
     if (data && data.length > 0) {
       // 既存データが見つかった場合：フォームに読み込む
-      setEntries(
-        data.map((r) => ({
-          area_name: r.area_name,
-          successes: String(r.successes),
-        }))
-      )
+      // 最大10セットに制限してフォームへ反映（各エントリに一意IDを付与）
+      const loaded = data.slice(0, MAX_ENTRIES).map((r) => ({
+        id: generateId(),
+        area_name: r.area_name,
+        successes: String(r.successes),
+      }))
+      setEntries(loaded)
       setExistingInfo(
         `📋 ${formatDateJP(targetDate)} には ${data.length} 件の記録があります。内容を確認・追記できます。`
       )
     } else {
-      // 既存データなし：フォームをリセット
+      // 既存データなし：フォームをリセット（1枠から開始）
       setEntries([emptyEntry()])
       setExistingInfo('')
     }
@@ -274,25 +298,28 @@ export default function RecordPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // エントリを追加（最大5つ）
+  // エントリを追加（最大10セットまで）
   const addEntry = () => {
-    if (entries.length < 5) {
+    if (entries.length < MAX_ENTRIES) {
+      // スプレッドで新しい配列を生成し、新しいエントリを末尾に追加
       setEntries([...entries, emptyEntry()])
     }
   }
 
-  // エントリを削除
-  const removeEntry = (idx: number) => {
+  // エントリを削除（id で特定することで正確に1行だけ削除）
+  const removeEntry = (id: string) => {
     if (entries.length > 1) {
-      setEntries(entries.filter((_, i) => i !== idx))
+      setEntries(entries.filter((entry) => entry.id !== id))
     }
   }
 
-  // フィールド更新
-  const updateEntry = (idx: number, field: keyof ShotEntry, value: string) => {
-    const updated = [...entries]
-    updated[idx] = { ...updated[idx], [field]: value }
-    setEntries(updated)
+  // 特定の行のフィールドのみを更新する（id で特定して他の行に影響を与えない）
+  const updateEntry = (id: string, field: keyof Omit<ShotEntry, 'id'>, value: string) => {
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.id === id ? { ...entry, [field]: value } : entry
+      )
+    )
   }
 
   // 送信処理（選択した日付のデータとして insert）
@@ -310,13 +337,20 @@ export default function RecordPage() {
       return
     }
 
-    // バリデーション
-    for (const entry of entries) {
-      if (!entry.area_name) {
-        setError('エリアを選択してください。')
-        setLoading(false)
-        return
-      }
+    // --- 入力済みのエントリのみを抽出（空のセットは送信しない）---
+    // エリアが選択されており、かつ成功数が入力されているものだけを対象にする
+    const filledEntries = entries.filter(
+      (entry) => entry.area_name !== '' && entry.successes !== ''
+    )
+
+    if (filledEntries.length === 0) {
+      setError('少なくとも1つのエリアと成功数を入力してください。')
+      setLoading(false)
+      return
+    }
+
+    // バリデーション（入力済みエントリのみチェック）
+    for (const entry of filledEntries) {
       const suc = parseInt(entry.successes)
       if (isNaN(suc) || suc < 0 || suc > 10) {
         setError('成功数は0〜10の範囲で入力してください。')
@@ -325,12 +359,12 @@ export default function RecordPage() {
       }
     }
 
-    // 選択した日付でレコードを insert（既存データは削除せず追記）
-    const records = entries.map((entry) => ({
+    // 選択した日付でレコードを insert（入力済みのエントリのみ、空の枠は除外）
+    const records = filledEntries.map((entry) => ({
       user_id: user.id,
-      date,                          // カレンダーで選択した日付を使用
+      date,                              // カレンダーで選択した日付を使用
       area_name: entry.area_name,
-      attempts: 10,                  // 10本単位固定
+      attempts: 10,                      // 10本単位固定
       successes: parseInt(entry.successes),
     }))
 
@@ -395,10 +429,10 @@ export default function RecordPage() {
           </div>
         )}
 
-        {/* エントリフォーム */}
+        {/* エントリフォーム（key に entry.id を使用して各セットの独立性を保証）*/}
         {entries.map((entry, idx) => (
           <div
-            key={idx}
+            key={entry.id}  // index ではなく一意 ID を key に使用（入力連動バグ防止）
             className="rounded-2xl p-4 shadow"
             style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
           >
@@ -407,7 +441,7 @@ export default function RecordPage() {
               {entries.length > 1 && (
                 <button
                   type="button"
-                  onClick={() => removeEntry(idx)}
+                  onClick={() => removeEntry(entry.id)}
                   className="text-xs text-black/60 hover:text-red-300 transition-colors"
                 >
                   ✕ 削除
@@ -420,8 +454,7 @@ export default function RecordPage() {
               <label className="block text-xs text-black/80 mb-1">エリア選択</label>
               <select
                 value={entry.area_name}
-                onChange={(e) => updateEntry(idx, 'area_name', e.target.value)}
-                required
+                onChange={(e) => updateEntry(entry.id, 'area_name', e.target.value)}
                 className="w-full rounded-lg px-3 py-2 bg-white text-gray-800 text-sm focus:outline-none"
               >
                 <option value="">-- エリアを選ぶ --</option>
@@ -447,7 +480,7 @@ export default function RecordPage() {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => updateEntry(idx, 'successes', String(n))}
+                    onClick={() => updateEntry(entry.id, 'successes', String(n))}
                     className="rounded-lg py-2 text-sm font-bold transition-all duration-150"
                     style={{
                       backgroundColor:
@@ -463,14 +496,14 @@ export default function RecordPage() {
           </div>
         ))}
 
-        {/* エリア追加ボタン */}
-        {entries.length < 5 && (
+        {/* エリア追加ボタン（最大10セットまで） */}
+        {entries.length < MAX_ENTRIES && (
           <button
             type="button"
             onClick={addEntry}
             className="w-full py-3 rounded-xl border-2 border-dashed text-black/70 hover:text-black hover:border-black transition-colors text-sm font-medium"
           >
-            ＋ エリアを追加（最大5エリア）
+            ＋ エリアを追加（最大{MAX_ENTRIES}エリア）
           </button>
         )}
 
