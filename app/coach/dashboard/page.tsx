@@ -74,23 +74,28 @@ export default function CoachDashboard() {
       setPlayerStats(stats)
 
       // エリア別トップスタッツ集計
+      // 【選出基準】各エリアにおいて、全セットの記録を合算した累計試投数に対する
+      // 累計成功数の割合（成功確率）が最も高い選手をNo.1として選出する。
+      // ※ 最低10本以上シュートを打っている選手のみを対象とする（少試投数による100%等の誤選出防止）
       const areaStats: AreaTopStat[] = SHOT_AREAS.map((area) => {
-        // このエリアに記録がある選手を集計
+        // 各選手について、このエリアの全セット記録を合算して累計成功確率を算出
         const playerAreaStats = profiles.map((profile) => {
           const areaRecs = records.filter(
             (r) => r.user_id === profile.id && r.area_name === area.value
           )
-          const att = areaRecs.reduce((s, r) => s + r.attempts, 0)
-          const suc = areaRecs.reduce((s, r) => s + r.successes, 0)
+          // 全セットの試投数・成功数を合算（SUM集計）
+          const totalAttempts = areaRecs.reduce((s, r) => s + r.attempts, 0)
+          const totalSuccesses = areaRecs.reduce((s, r) => s + r.successes, 0)
           return {
             profile,
-            attempts: att,
-            successes: suc,
-            percentage: att > 0 ? (suc / att) * 100 : 0,
+            attempts: totalAttempts,
+            successes: totalSuccesses,
+            // 累計成功確率 = 合計成功数 ÷ 合計試投数
+            percentage: totalAttempts > 0 ? (totalSuccesses / totalAttempts) * 100 : 0,
           }
-        }).filter((p) => p.attempts >= 10) // 最低10本以上の選手のみ
+        }).filter((p) => p.attempts >= 10) // 最低10本以上の選手のみ対象
 
-        // 最高確率の選手
+        // 累計成功確率が最も高い選手をNo.1として選出（降順ソート後の先頭）
         const top = playerAreaStats.sort((a, b) => b.percentage - a.percentage)[0]
 
         return {
