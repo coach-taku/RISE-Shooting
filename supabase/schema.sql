@@ -110,7 +110,65 @@ create trigger on_auth_user_created
 -- =====================================================
 
 -- =====================================================
+-- 6. 努力量ランキング用 ビュー & RPC（v11追加）
+-- フロントエンドでの全件取得集計の上限問題を解消するため、
+-- DB側で集計する仕組みを追加。
+-- 詳細は supabase/add-effort-ranking-rpc.sql を参照。
+-- =====================================================
+
+-- ビュー: 選手ごとの総試投数・総成功数を集計
+create or replace view public.v_player_shooting_totals as
+  select
+    p.id                            as user_id,
+    p.username,
+    coalesce(sum(r.attempts), 0)    as total_attempts,
+    coalesce(sum(r.successes), 0)   as total_successes,
+    count(r.id)                     as record_count
+  from
+    public.profiles p
+    left join public.shooting_records r on r.user_id = p.id
+  where
+    p.role = 'player'
+  group by
+    p.id, p.username
+  order by
+    total_attempts desc;
+
+-- RPC 関数: 努力量ランキングを総試投数降順で返す
+create or replace function public.get_player_effort_ranking()
+returns table (
+  user_id         uuid,
+  username        text,
+  total_attempts  bigint,
+  total_successes bigint,
+  record_count    bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    p.id                            as user_id,
+    p.username,
+    coalesce(sum(r.attempts), 0)    as total_attempts,
+    coalesce(sum(r.successes), 0)   as total_successes,
+    count(r.id)                     as record_count
+  from
+    public.profiles p
+    left join public.shooting_records r on r.user_id = p.id
+  where
+    p.role = 'player'
+  group by
+    p.id, p.username
+  order by
+    total_attempts desc;
+$$;
+
+-- =====================================================
 -- 確認用クエリ（実行後に確認してください）
 -- =====================================================
 -- select * from public.profiles;
 -- select * from public.shooting_records;
+-- select * from public.v_player_shooting_totals;
+-- select * from public.get_player_effort_ranking();
