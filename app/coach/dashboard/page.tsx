@@ -8,8 +8,21 @@ import { createClient } from '@/lib/supabase/client'
 import { SHOT_AREAS } from '@/lib/constants'
 import { Profile, ShootingRecord } from '@/lib/types'
 
+// -----------------------------------------------
+// 努力量ランキング用の型
+// get_player_effort_ranking RPC が返すデータ型
+// -----------------------------------------------
+interface EffortRankingRow {
+  user_id: string
+  username: string
+  total_attempts: number
+  total_successes: number
+  record_count: number
+}
+
 interface PlayerStat {
-  profile: Profile
+  userId: string
+  username: string
   totalAttempts: number
   totalSuccesses: number
   percentage: number
@@ -29,7 +42,7 @@ export default function CoachDashboard() {
   const [playerStats, setPlayerStats] = useState<PlayerStat[]>([])
   const [areaTopStats, setAreaTopStats] = useState<AreaTopStat[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(null)
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [playerRecords, setPlayerRecords] = useState<ShootingRecord[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
 
@@ -37,99 +50,111 @@ export default function CoachDashboard() {
     const fetchData = async () => {
       const supabase = createClient()
 
-      // 全選手のプロフィール取得
+      // -----------------------------------------------
+      // 努力量ランキング: RPCで DB 側集計 (v11修正)
+      // 従来のフロント側全件取得方式を廃止。
+      // get_player_effort_ranking() RPC を呼び出してサーバー側で
+      // 全レコードを集計した結果を取得する。
+      // これにより Supabase のデフォルト1,000件取得上限の影響を受けず、
+      // 全期間の正確な総試投数を表示できる。
+      // -----------------------------------------------
+      const { data: effortRanking, error: rpcError } = await supabase
+        .rpc('get_player_effort_ranking')
+
+      if (rpcError) {
+        console.error('努力量ランキングRPCエラー:', rpcError)
+      }
+
+      // RPC の結果を PlayerStat 形式に変換
+      const stats: PlayerStat[] = (effortRanking as EffortRankingRow[] ?? []).map((row) => ({
+        userId: row.user_id,
+        username: row.username,
+        totalAttempts: Number(row.total_attempts),
+        totalSuccesses: Number(row.total_successes),
+        percentage:
+          Number(row.total_attempts) > 0
+            ? (Number(row.total_successes) / Number(row.total_attempts)) * 100
+            : 0,
+        recordCount: Number(row.record_count),
+      }))
+
+      // RPC がすでに total_attempts 降順でソート済みだが念のため
+      stats.sort((a, b) => b.totalAttempts - a.totalAttempts)
+      setPlayerStats(stats)
+
+      // -----------------------------------------------
+      // エリア別トップスタッツ:
+      // 全選手プロフィール + 全シューティング記録をフロントで集計する。
+      // ※ エリア別集計は今回の修正対象外のため既存ロジックを維持。
+      // -----------------------------------------------
       const { data: profiles } = await supabase
         .from('profiles')
         .select('*')
         .eq('role', 'player')
         .order('username')
 
-      // 全シューティング記録取得
+      // エリア別集計用にレコードを全件取得（既存ロジック）
       const { data: records } = await supabase
         .from('shooting_records')
         .select('*')
         .order('date', { ascending: false })
 
-      if (!profiles || !records) {
-        setLoading(false)
-        return
+      if (profiles && records) {
+        // エリア別トップスタッツ集計
+        // 【選出基準】各エリアにおいて、全セットの記録を合算した累計試投数に対する
+        // 累計成功数の割合（成功確率）が最も高い選手をNo.1として選出する。
+        // ※ 最低50本以上シュートを打っている選手のみを対象とする（少試投数による100%等の誤選出防止）
+        const areaStats: AreaTopStat[] = SHOT_AREAS.map((area) => {
+          const playerAreaStats = profiles.map((profile: Profile) => {
+            const areaRecs = records.filter(
+              (r: ShootingRecord) => r.user_id === profile.id && r.area_name === area.value
+            )
+            const totalAttempts = areaRecs.reduce((s: number, r: ShootingRecord) => s + r.attempts, 0)
+            const totalSuccesses = areaRecs.reduce((s: number, r: ShootingRecord) => s + r.successes, 0)
+            return {
+              profile,
+              attempts: totalAttempts,
+              successes: totalSuccesses,
+              percentage: totalAttempts > 0 ? (totalSuccesses / totalAttempts) * 100 : 0,
+            }
+          }).filter((p) => p.attempts >= 50)
+
+          const top = playerAreaStats.sort((a, b) => b.percentage - a.percentage)[0]
+
+          return {
+            area_name: area.value,
+            label: area.label,
+            topPlayer: top ? top.profile.username : '-',
+            percentage: top ? top.percentage : 0,
+            attempts: top ? top.attempts : 0,
+            successes: top ? top.successes : 0,
+          }
+        }).filter((a) => a.topPlayer !== '-')
+
+        setAreaTopStats(areaStats)
       }
 
-      // 選手ごとのスタッツ集計
-      const stats: PlayerStat[] = profiles.map((profile) => {
-        const playerRecs = records.filter((r) => r.user_id === profile.id)
-        const totalAttempts = playerRecs.reduce((s, r) => s + r.attempts, 0)
-        const totalSuccesses = playerRecs.reduce((s, r) => s + r.successes, 0)
-        return {
-          profile,
-          totalAttempts,
-          totalSuccesses,
-          percentage: totalAttempts > 0 ? (totalSuccesses / totalAttempts) * 100 : 0,
-          recordCount: playerRecs.length,
-        }
-      })
-
-      // 努力量ランキング（試投数降順）
-      stats.sort((a, b) => b.totalAttempts - a.totalAttempts)
-      setPlayerStats(stats)
-
-      // エリア別トップスタッツ集計
-      // 【選出基準】各エリアにおいて、全セットの記録を合算した累計試投数に対する
-      // 累計成功数の割合（成功確率）が最も高い選手をNo.1として選出する。
-      // ※ 最低50本以上シュートを打っている選手のみを対象とする（少試投数による100%等の誤選出防止）
-      const areaStats: AreaTopStat[] = SHOT_AREAS.map((area) => {
-        // 各選手について、このエリアの全セット記録を合算して累計成功確率を算出
-        const playerAreaStats = profiles.map((profile) => {
-          const areaRecs = records.filter(
-            (r) => r.user_id === profile.id && r.area_name === area.value
-          )
-          // 全セットの試投数・成功数を合算（SUM集計）
-          const totalAttempts = areaRecs.reduce((s, r) => s + r.attempts, 0)
-          const totalSuccesses = areaRecs.reduce((s, r) => s + r.successes, 0)
-          return {
-            profile,
-            attempts: totalAttempts,
-            successes: totalSuccesses,
-            // 累計成功確率 = 合計成功数 ÷ 合計試投数
-            percentage: totalAttempts > 0 ? (totalSuccesses / totalAttempts) * 100 : 0,
-          }
-        }).filter((p) => p.attempts >= 50) // 最低50本以上の選手のみ対象
-
-        // 累計成功確率が最も高い選手をNo.1として選出（降順ソート後の先頭）
-        const top = playerAreaStats.sort((a, b) => b.percentage - a.percentage)[0]
-
-        return {
-          area_name: area.value,
-          label: area.label,
-          topPlayer: top ? top.profile.username : '-',
-          percentage: top ? top.percentage : 0,
-          attempts: top ? top.attempts : 0,
-          successes: top ? top.successes : 0,
-        }
-      }).filter((a) => a.topPlayer !== '-')
-
-      setAreaTopStats(areaStats)
       setLoading(false)
     }
 
     fetchData()
   }, [])
 
-  // 選手詳細データ取得
-  const fetchPlayerDetail = async (profile: Profile) => {
-    if (selectedPlayer?.id === profile.id) {
-      setSelectedPlayer(null)
+  // 選手詳細データ取得（直近50件制限は既存仕様のまま維持）
+  const fetchPlayerDetail = async (userId: string, username: string) => {
+    if (selectedPlayerId === userId) {
+      setSelectedPlayerId(null)
       setPlayerRecords([])
       return
     }
-    setSelectedPlayer(profile)
+    setSelectedPlayerId(userId)
     setLoadingDetail(true)
 
     const supabase = createClient()
     const { data } = await supabase
       .from('shooting_records')
       .select('*')
-      .eq('user_id', profile.id)
+      .eq('user_id', userId)
       .order('date', { ascending: false })
       .limit(50)
 
@@ -159,10 +184,10 @@ export default function CoachDashboard() {
           ) : (
             <div className="divide-y divide-white/10">
               {playerStats.map((stat, idx) => (
-                <div key={stat.profile.id}>
+                <div key={stat.userId}>
                   <button
                     className="w-full flex items-center px-4 py-3 text-left hover:bg-white/10 transition-colors"
-                    onClick={() => fetchPlayerDetail(stat.profile)}
+                    onClick={() => fetchPlayerDetail(stat.userId, stat.username)}
                   >
                     {/* 順位 */}
                     <span
@@ -176,7 +201,7 @@ export default function CoachDashboard() {
                     </span>
 
                     {/* 選手名 */}
-                    <span className="text-black font-bold flex-1">{stat.profile.username}</span>
+                    <span className="text-black font-bold flex-1">{stat.username}</span>
 
                     {/* スタッツ */}
                     <div className="text-right">
@@ -185,12 +210,12 @@ export default function CoachDashboard() {
                     </div>
 
                     <span className="ml-2 text-black/40 text-sm">
-                      {selectedPlayer?.id === stat.profile.id ? '▲' : '▼'}
+                      {selectedPlayerId === stat.userId ? '▲' : '▼'}
                     </span>
                   </button>
 
                   {/* 選手詳細（展開表示） */}
-                  {selectedPlayer?.id === stat.profile.id && (
+                  {selectedPlayerId === stat.userId && (
                     <div className="px-4 py-3" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
                       {loadingDetail ? (
                         <p className="text-black/60 text-sm">読み込み中...</p>
@@ -203,7 +228,7 @@ export default function CoachDashboard() {
                             {playerRecords.map((rec) => (
                               <div key={rec.id} className="flex items-center text-xs">
                                 <span className="text-black/50 w-20 flex-shrink-0">{rec.date}</span>
-                                <span className="text-black/80 flex-1">{rec.area_name.replace(/^(3P|2P)_/, '')}</span>
+                                <span className="text-black/80 flex-1">{rec.area_name.replace(/^(3P|2P|FT)_/, '')}</span>
                                 <span className="text-black">{rec.successes}/{rec.attempts}</span>
                                 <span className="text-blue-900 w-12 text-right">
                                   {((rec.successes / rec.attempts) * 100).toFixed(0)}%
